@@ -1,0 +1,11 @@
+{
+  "defaultProfile": "WORD",
+  "cleanHotkey": "Ctrl+Alt+V",
+  "aiHotkey": "Ctrl+Alt+B",
+  "aiMode": "GRAMMAR",
+  "ollamaUrl": "http://localhost:11434",
+  "aiModel": "llama3.2",
+  "aiTimeoutSeconds": 60,
+  "maxClipboardChars": 200000,
+  "disabledProcessors": []
+}
