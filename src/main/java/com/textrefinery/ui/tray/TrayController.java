@@ -3,17 +3,13 @@ package com.textrefinery.ui.tray;
 import com.textrefinery.domain.model.AiMode;
 import com.textrefinery.domain.model.CleaningProfile;
 import com.textrefinery.domain.model.Settings;
+import com.textrefinery.ui.components.BrandLogo;
 import java.awt.CheckboxMenuItem;
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.Graphics2D;
 import java.awt.Menu;
 import java.awt.MenuItem;
 import java.awt.PopupMenu;
-import java.awt.RenderingHints;
 import java.awt.SystemTray;
 import java.awt.TrayIcon;
-import java.awt.image.BufferedImage;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
@@ -105,18 +101,8 @@ public class TrayController {
         }
     }
 
-    /** Icono generado por código para no depender de binarios; sustituible por /icons/*.png. */
-    private static BufferedImage createImage() {
-        int size = 64;
-        BufferedImage img = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g = img.createGraphics();
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g.setColor(new Color(0x2563EB));
-        g.fillRoundRect(2, 2, size - 4, size - 4, 18, 18);
-        g.setColor(Color.WHITE);
-        g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 38));
-        g.drawString("T", 20, 46);
-        g.dispose();
-        return img;
+    /** Logo de la marca a 64 px; AWT lo reduce al tamaño de la bandeja de cada sistema. */
+    private static java.awt.Image createImage() {
+        return BrandLogo.awtImage(64);
     }
 }
