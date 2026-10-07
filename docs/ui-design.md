@@ -30,12 +30,38 @@ variantes sobre vino, monocromo blanco y monocromo rojo.
 JavaFX (ventana y barra lateral) y AWT (icono de bandeja), de modo que no hay binarios que mantener.
 A 16 px la chispa se reduce a un punto y la T sigue legible.
 
+## Tema oscuro
+
+Se activa en *General → Apariencia* y se aplica al instante. El CSS lo implementa redefiniendo las variables bajo `.root.dark`,
+sin duplicar reglas. El rojo primario (`#C8102E`) no cambia; lo que cambia es el rojo **usado como texto**, que sobre fondo
+oscuro necesita tonos más claros para mantener el contraste:
+
+| Variable | Claro | Oscuro |
+|---|---|---|
+| `-bg` / `-surface` | `#FAF7F7` / `#FFFFFF` | `#190E10` / `#251618` |
+| `-ink` / `-muted` | `#261C1E` / `#7A6A6D` | `#F6E9EA` / `#B9A0A4` |
+| `-accent-text` (rojo como texto) | `#C8102E` | `#FF6B7D` |
+| `-accent-soft-text` (texto en fichas rojas) | `#A00D25` | `#FFB3BC` |
+| `-red-50` … `-red-200` (fondos rojos suaves) | `#FFF1F2` … `#FFC2C9` | `#3A1519` … `#6B2229` |
+
+La barra lateral es vino oscuro en ambos temas. Un mismo color no puede ser a la vez fondo del botón al pasar el ratón (`-red-700`) y
+texto sobre oscuro, por eso existen las variables semánticas `-accent-*` y `-danger-text`.
+
+## Páginas
+
+| Página | Contenido |
+|---|---|
+| Limpieza | Perfil de salida, vista previa en vivo con el pipeline real, procesadores activos |
+| Atajos e IA | Atajos con captura de teclas, modo de IA, conexión con Ollama |
+| General | Iniciar con el sistema, tema claro/oscuro, idioma del texto (Español / English) |
+
 ## Estructura
 
 ```
 SettingsWindow           barra lateral + páginas + pie (Restaurar / Guardar)
 ├── CleaningPage         perfil, vista previa en vivo, procesadores
-└── ShortcutsPage        atajos (con captura de teclas) y conexión con Ollama
+├── ShortcutsPage        atajos (con captura de teclas) y conexión con Ollama
+└── GeneralPage          arranque con el sistema, tema, idioma
 ui/components            ToggleSwitch, Icons (SVG de trazo), Fonts
 ```
 

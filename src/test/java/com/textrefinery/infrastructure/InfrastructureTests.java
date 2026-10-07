@@ -30,10 +30,23 @@ class InfrastructureTests {
     }
 
     @Test
-    void todasLasPlantillasDePromptExisten() {
-        for (AiMode mode : AiMode.values()) {
-            assertThat(PromptTemplates.render(mode, "TEXTO-DE-PRUEBA")).contains("TEXTO-DE-PRUEBA").doesNotContain("{{texto}}");
+    void todasLasPlantillasDePromptExistenEnCadaIdioma() {
+        for (var language : com.textrefinery.domain.model.TextLanguage.values()) {
+            for (AiMode mode : AiMode.values()) {
+                assertThat(PromptTemplates.render(mode, language, "TEXTO-DE-PRUEBA"))
+                        .as(language + "/" + mode)
+                        .contains("TEXTO-DE-PRUEBA").doesNotContain("{{texto}}");
+            }
         }
+    }
+
+    @Test
+    void lasPlantillasEstanEnElIdiomaIndicado() {
+        String es = PromptTemplates.render(AiMode.CITE, com.textrefinery.domain.model.TextLanguage.ES, "x");
+        String en = PromptTemplates.render(AiMode.CITE, com.textrefinery.domain.model.TextLanguage.EN, "x");
+        assertThat(es).contains("párrafo citable").contains("NO inventes");
+        assertThat(en).contains("citable paragraph").contains("Do NOT invent");
+        assertThat(en).doesNotContain("inventes");
     }
 
     @Test
@@ -49,6 +62,7 @@ class InfrastructureTests {
         first.disabledProcessors.add("QuoteNormalizer");
         first.theme = com.textrefinery.domain.model.ThemeMode.DARK;
         first.launchAtLogin = true;
+        first.textLanguage = com.textrefinery.domain.model.TextLanguage.EN;
         adapter.save(first);
 
         Settings second = adapter.load();
@@ -56,6 +70,7 @@ class InfrastructureTests {
         assertThat(second.disabledProcessors).containsExactly("QuoteNormalizer");
         assertThat(second.theme).isEqualTo(com.textrefinery.domain.model.ThemeMode.DARK);
         assertThat(second.launchAtLogin).isTrue();
+        assertThat(second.textLanguage).isEqualTo(com.textrefinery.domain.model.TextLanguage.EN);
         assertThat(second.copy().theme).isEqualTo(com.textrefinery.domain.model.ThemeMode.DARK);
     }
 

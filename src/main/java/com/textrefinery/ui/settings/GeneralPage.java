@@ -1,6 +1,7 @@
 package com.textrefinery.ui.settings;
 
 import com.textrefinery.domain.model.Settings;
+import com.textrefinery.domain.model.TextLanguage;
 import com.textrefinery.domain.model.ThemeMode;
 import com.textrefinery.domain.port.AutostartPort;
 import com.textrefinery.ui.components.Icons;
@@ -28,6 +29,8 @@ final class GeneralPage implements SettingsPage {
     private final Consumer<ThemeMode> onThemeChosen;
     private final ToggleGroup themeGroup = new ToggleGroup();
     private final Map<ThemeMode, ToggleButton> themeButtons = new EnumMap<>(ThemeMode.class);
+    private final ToggleGroup languageGroup = new ToggleGroup();
+    private final Map<TextLanguage, ToggleButton> languageButtons = new EnumMap<>(TextLanguage.class);
     private final ToggleSwitch launchAtLogin = new ToggleSwitch();
     private final Label launchHint = new Label();
     private final VBox sections = new VBox(16);
@@ -68,6 +71,27 @@ final class GeneralPage implements SettingsPage {
         });
         sections.getChildren().add(card("Apariencia", row("Tema", themeHint, themeSegments)));
 
+        Label languageHint = new Label("La limpieza funciona igual en ambos idiomas; esto elige en cuál se pide el trabajo a la IA.");
+        languageHint.getStyleClass().add("processor-hint");
+        languageHint.setWrapText(true);
+        languageHint.setMaxWidth(430);
+        HBox languageSegments = new HBox(4);
+        languageSegments.getStyleClass().add("segment-group");
+        for (TextLanguage language : TextLanguage.values()) {
+            ToggleButton b = new ToggleButton(language.label());
+            b.getStyleClass().add("segment");
+            b.setToggleGroup(languageGroup);
+            b.setMinWidth(90);
+            languageButtons.put(language, b);
+            languageSegments.getChildren().add(b);
+        }
+        languageGroup.selectedToggleProperty().addListener((obs, was, now) -> {
+            if (now == null) {
+                languageGroup.selectToggle(was);
+            }
+        });
+        sections.getChildren().add(card("Idioma", row("Idioma del texto", languageHint, languageSegments)));
+
         VBox content = new VBox(18, new VBox(4, title, sub), sections);
         content.setPadding(new Insets(30, 36, 8, 36));
         root.setContent(content);
@@ -97,6 +121,7 @@ final class GeneralPage implements SettingsPage {
         launchAtLogin.setDisable(!supported);
         launchAtLogin.setSelected(supported && autostart.isEnabled()); // el estado real lo manda el sistema, no el JSON
         themeGroup.selectToggle(themeButtons.get(s.theme));
+        languageGroup.selectToggle(languageButtons.get(s.textLanguage));
         launchHint.setText(supported
                 ? "Abre Text Refinery en la bandeja al iniciar sesión."
                 : "No disponible al ejecutar desde el código fuente; usa el instalador o el jar.");
@@ -106,6 +131,17 @@ final class GeneralPage implements SettingsPage {
     public void apply(Settings target) {
         target.launchAtLogin = launchAtLogin.isSelected();
         target.theme = selectedTheme();
+        target.textLanguage = selectedLanguage();
+    }
+
+    private TextLanguage selectedLanguage() {
+        Toggle selected = languageGroup.getSelectedToggle();
+        for (Map.Entry<TextLanguage, ToggleButton> e : languageButtons.entrySet()) {
+            if (e.getValue() == selected) {
+                return e.getKey();
+            }
+        }
+        return TextLanguage.ES;
     }
 
     private ThemeMode selectedTheme() {

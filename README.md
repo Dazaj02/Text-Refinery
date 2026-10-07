@@ -13,6 +13,8 @@ opcionalmente lo refina con IA local (Ollama). Funciona en **Windows, macOS y Li
 3. **Ctrl+Shift+G** → limpia y además lo envía a Ollama (resumir / corregir / párrafo citable).
    Si Ollama no responde, solo se aplica la limpieza.
 
+¿Te arrepientes? **Restaurar texto original** en el menú de bandeja devuelve lo que habías copiado (solo en memoria; se pierde al cerrar la app).
+
 Perfiles: **Word**, **LaTeX** (escapa `% & _ # $ { } ~ ^ \`), **Markdown** (convierte HTML copiado de la web) y **Texto plano**.
 Los atajos, el perfil, el modelo de IA y los procesadores activos se cambian desde *Ajustes…* en el menú de bandeja.
 
@@ -23,9 +25,13 @@ Tema propio en rojo (`#C8102E`) con escala tonal 50–900, barra lateral vino y 
 editas el texto de la izquierda y ves el resultado según el perfil y los procesadores activos.
 Los atajos se cambian pulsando **Cambiar** y escribiendo la combinación.
 
+Tres páginas: **Limpieza**, **Atajos e IA** y **General** (arranque con el sistema, tema claro/oscuro e idioma de la IA).
+
 | Limpieza | Atajos e IA |
 |---|---|
 | ![Limpieza](docs/img/limpieza.png) | ![Atajos e IA](docs/img/atajos-ia.png) |
+| **General** | **Tema oscuro** |
+| ![General](docs/img/general.png) | ![Limpieza en oscuro](docs/img/limpieza-oscuro.png) |
 
 Detalles del diseño y de la paleta en [docs/ui-design.md](docs/ui-design.md).
 

@@ -21,6 +21,7 @@ public class Settings {
     /** Preferencia del usuario; el estado real del arranque lo guarda el sistema operativo (ver AutostartPort). */
     public boolean launchAtLogin = false;
     public ThemeMode theme = ThemeMode.LIGHT;
+    public TextLanguage textLanguage = TextLanguage.ES;
 
     public Settings copy() {
         Settings c = new Settings();
@@ -35,6 +36,7 @@ public class Settings {
         c.disabledProcessors = new HashSet<>(disabledProcessors);
         c.launchAtLogin = launchAtLogin;
         c.theme = theme;
+        c.textLanguage = textLanguage;
         return c;
     }
 }

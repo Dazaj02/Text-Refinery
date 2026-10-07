@@ -32,7 +32,7 @@ public class OllamaAiProvider implements AiProviderPort {
         try {
             String body = mapper.writeValueAsString(Map.of(
                     "model", s.aiModel,
-                    "prompt", PromptTemplates.render(mode, text),
+                    "prompt", PromptTemplates.render(mode, s.textLanguage, text),
                     "stream", false));
             HttpRequest request = HttpRequest.newBuilder(URI.create(base(s) + "/api/generate"))
                     .timeout(Duration.ofSeconds(s.aiTimeoutSeconds))

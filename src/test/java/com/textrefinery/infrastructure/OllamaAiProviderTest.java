@@ -81,6 +81,17 @@ class OllamaAiProviderTest {
     }
 
     @Test
+    void elIdiomaElegidoLlegaAlPromptQueSeEnvia() {
+        settings.textLanguage = com.textrefinery.domain.model.TextLanguage.EN;
+        new OllamaAiProvider(() -> settings).refine("hello there", AiMode.GRAMMAR);
+        assertThat(requests.get(0).get("prompt").asText()).contains("English copy editor").doesNotContain("corrector");
+
+        settings.textLanguage = com.textrefinery.domain.model.TextLanguage.ES;
+        new OllamaAiProvider(() -> settings).refine("hola", AiMode.GRAMMAR);
+        assertThat(requests.get(1).get("prompt").asText()).contains("corrector de estilo");
+    }
+
+    @Test
     void detectaQueElServidorEstaDisponible() {
         assertThat(new OllamaAiProvider(() -> settings).isAvailable()).isTrue();
     }
