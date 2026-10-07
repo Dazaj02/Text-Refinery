@@ -22,8 +22,9 @@ import java.util.function.Consumer;
  */
 public class TrayController {
 
-    public record Actions(Runnable cleanNow, Consumer<AiMode> refine, Consumer<CleaningProfile> profileChanged,
-                          Consumer<Boolean> pausedChanged, Runnable openSettings, Runnable exit) {
+    public record Actions(Runnable cleanNow, Runnable restoreOriginal, Consumer<AiMode> refine,
+                          Consumer<CleaningProfile> profileChanged, Consumer<Boolean> pausedChanged,
+                          Runnable openSettings, Runnable exit) {
     }
 
     private final TrayIcon trayIcon;
@@ -52,6 +53,10 @@ public class TrayController {
         MenuItem clean = new MenuItem("Limpiar portapapeles");
         clean.addActionListener(e -> actions.cleanNow().run());
         menu.add(clean);
+
+        MenuItem restore = new MenuItem("Restaurar texto original");
+        restore.addActionListener(e -> actions.restoreOriginal().run());
+        menu.add(restore);
 
         Menu ai = new Menu("Refinar con IA");
         for (AiMode mode : AiMode.values()) {

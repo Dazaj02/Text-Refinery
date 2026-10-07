@@ -97,6 +97,7 @@ public final class App {
 
         tray.install(settings.get(), new TrayController.Actions(
                 () -> executor.submit(clean::execute),
+                () -> executor.submit(clean::restoreOriginal),
                 mode -> executor.submit(() -> refine.execute(mode)),
                 profile -> {
                     Settings updated = settings.get().copy();

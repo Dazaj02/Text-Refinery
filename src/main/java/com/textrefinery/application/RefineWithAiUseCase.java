@@ -48,8 +48,10 @@ public class RefineWithAiUseCase {
                 .handle((refined, error) -> {
                     boolean ok;
                     if (error == null && refined != null && !refined.isBlank()) {
-                        ok = clipboard.writeText(refined.strip());
+                        String result = refined.strip();
+                        ok = clipboard.writeText(result);
                         if (ok) {
+                            cleaner.markWritten(result);
                             notifier.info("Texto refinado ✓");
                         }
                     } else {
@@ -57,6 +59,7 @@ public class RefineWithAiUseCase {
                         log.warn("IA no disponible: {}", error == null ? "respuesta vacía" : error.getClass().getSimpleName());
                         ok = clipboard.writeText(text);
                         if (ok) {
+                            cleaner.markWritten(text);
                             notifier.error("IA no disponible: se aplicó solo la limpieza");
                         }
                     }

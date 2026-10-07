@@ -86,6 +86,60 @@ class UseCaseTests {
     }
 
     @Test
+    void restaurarDevuelveElTextoAnteriorALaLimpieza() {
+        clipboard.text = "infor-\nmacion   sucia";
+        clean.execute();
+        assertThat(clipboard.text).isEqualTo("informacion sucia");
+
+        clean.restoreOriginal();
+        assertThat(clipboard.text).isEqualTo("infor-\nmacion   sucia");
+        assertThat(notifier.infos).contains("Texto original restaurado ✓");
+    }
+
+    @Test
+    void limpiarDosVecesSeguidasNoPierdeElOriginalVerdadero() {
+        clipboard.text = "uno   dos\ntres";
+        clean.execute();
+        clean.execute(); // el portapapeles ya tiene el texto limpio
+        clean.restoreOriginal();
+        assertThat(clipboard.text).isEqualTo("uno   dos\ntres");
+    }
+
+    @Test
+    void restaurarSinNadaGuardadoAvisa() {
+        clean.restoreOriginal();
+        assertThat(notifier.errors).containsExactly("No hay ningún texto anterior que restaurar");
+    }
+
+    @Test
+    void conLaIaTambienSeRestauraElOriginalNoElRefinado() {
+        clipboard.text = "hola   mundo";
+        AiProviderPort ai = new AiProviderPort() {
+            public String refine(String text, AiMode mode) { return "REFINADO"; }
+            public boolean isAvailable() { return true; }
+        };
+        RefineWithAiUseCase refine = new RefineWithAiUseCase(clean, ai, clipboard, notifier, () -> settings, direct);
+        refine.execute(AiMode.GRAMMAR).join();
+        assertThat(clipboard.text).isEqualTo("REFINADO");
+
+        refine.execute(AiMode.GRAMMAR).join(); // segunda pasada sobre el texto ya refinado
+        clean.restoreOriginal();
+        assertThat(clipboard.text).isEqualTo("hola   mundo");
+    }
+
+    @Test
+    void enMarkdownSeRestauraElTextoPlanoNoElHtml() {
+        settings.defaultProfile = com.textrefinery.domain.model.CleaningProfile.MARKDOWN;
+        clipboard.html = "<p>Hola <b>mundo</b></p>";
+        clipboard.text = "Hola mundo";
+        clean.execute();
+        assertThat(clipboard.text).contains("**mundo**");
+
+        clean.restoreOriginal();
+        assertThat(clipboard.text).isEqualTo("Hola mundo");
+    }
+
+    @Test
     void avisaSiNoHayTexto() {
         clean.execute();
         assertThat(notifier.errors).hasSize(1);
