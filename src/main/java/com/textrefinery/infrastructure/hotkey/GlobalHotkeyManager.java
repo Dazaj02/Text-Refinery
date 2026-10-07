@@ -2,8 +2,13 @@ package com.textrefinery.infrastructure.hotkey;
 
 import com.github.kwhat.jnativehook.GlobalScreen;
 import com.github.kwhat.jnativehook.NativeHookException;
+import com.github.kwhat.jnativehook.NativeInputEvent;
 import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
 import com.github.kwhat.jnativehook.keyboard.NativeKeyListener;
+import java.lang.reflect.Field;
+import java.util.List;
+import java.util.concurrent.AbstractExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -16,6 +21,7 @@ public class GlobalHotkeyManager implements NativeKeyListener {
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(GlobalHotkeyManager.class);
     private static final long DEBOUNCE_MS = 400;
+    private static final Field RESERVED = findReservedField();
 
     private volatile Hotkey cleanKey;
     private volatile Hotkey aiKey;
@@ -38,6 +44,7 @@ public class GlobalHotkeyManager implements NativeKeyListener {
         Logger jnh = Logger.getLogger(GlobalScreen.class.getPackage().getName());
         jnh.setLevel(Level.WARNING);
         jnh.setUseParentHandlers(false);
+        GlobalScreen.setEventDispatcher(new DirectExecutor());
         if (!GlobalScreen.isNativeHookRegistered()) {
             GlobalScreen.registerNativeHook();
         }
@@ -57,16 +64,84 @@ public class GlobalHotkeyManager implements NativeKeyListener {
 
     @Override
     public void nativeKeyPressed(NativeKeyEvent e) {
+        boolean clean = matches(cleanKey, e);
+        boolean ai = !clean && matches(aiKey, e);
+        if (!clean && !ai) {
+            return;
+        }
+        // La tecla es nuestra: la app en primer plano (p. ej. Word) no debe recibirla.
+        consume(e);
         long now = System.currentTimeMillis();
         if (now - lastFired < DEBOUNCE_MS) {
             return;
         }
-        if (matches(cleanKey, e)) {
-            lastFired = now;
-            onClean.run();
-        } else if (matches(aiKey, e)) {
-            lastFired = now;
-            onAi.run();
+        lastFired = now;
+        (clean ? onClean : onAi).run();
+    }
+
+    @Override
+    public void nativeKeyReleased(NativeKeyEvent e) {
+        if (matches(cleanKey, e) || matches(aiKey, e)) {
+            consume(e);
+        }
+    }
+
+    /** Suprime el evento para el resto del sistema (funciona en Windows y macOS; en Linux/X11 es best-effort). */
+    private static void consume(NativeKeyEvent e) {
+        if (RESERVED == null) {
+            return;
+        }
+        try {
+            RESERVED.setShort(e, (short) 0x01);
+        } catch (IllegalAccessException ex) {
+            log.debug("No se pudo consumir el evento de teclado");
+        }
+    }
+
+    private static Field findReservedField() {
+        try {
+            Field f = NativeInputEvent.class.getDeclaredField("reserved");
+            f.setAccessible(true);
+            return f;
+        } catch (ReflectiveOperationException | RuntimeException ex) {
+            log.warn("El atajo no podrá ocultarse a otras aplicaciones: {}", ex.getClass().getSimpleName());
+            return null;
+        }
+    }
+
+    /** Ejecuta en el mismo hilo nativo: el hook solo puede suprimir la tecla si el listener termina antes de volver. */
+    private static final class DirectExecutor extends AbstractExecutorService {
+        private volatile boolean shutdown;
+
+        @Override
+        public void execute(Runnable command) {
+            command.run();
+        }
+
+        @Override
+        public void shutdown() {
+            shutdown = true;
+        }
+
+        @Override
+        public List<Runnable> shutdownNow() {
+            shutdown = true;
+            return List.of();
+        }
+
+        @Override
+        public boolean isShutdown() {
+            return shutdown;
+        }
+
+        @Override
+        public boolean isTerminated() {
+            return shutdown;
+        }
+
+        @Override
+        public boolean awaitTermination(long timeout, TimeUnit unit) {
+            return true;
         }
     }
 

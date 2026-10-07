@@ -46,14 +46,23 @@ public class RefineWithAiUseCase {
         return CompletableFuture.supplyAsync(() -> ai.refine(text, mode), executor)
                 .orTimeout(settings.get().aiTimeoutSeconds, TimeUnit.SECONDS)
                 .handle((refined, error) -> {
+                    boolean ok;
                     if (error == null && refined != null && !refined.isBlank()) {
-                        clipboard.writeText(refined.strip());
-                        notifier.info("Texto refinado ✓");
+                        ok = clipboard.writeText(refined.strip());
+                        if (ok) {
+                            notifier.info("Texto refinado ✓");
+                        }
                     } else {
                         // Degradación elegante: nunca se registra el contenido, solo el tipo de error.
                         log.warn("IA no disponible: {}", error == null ? "respuesta vacía" : error.getClass().getSimpleName());
-                        clipboard.writeText(text);
-                        notifier.error("IA no disponible: se aplicó solo la limpieza");
+                        ok = clipboard.writeText(text);
+                        if (ok) {
+                            notifier.error("IA no disponible: se aplicó solo la limpieza");
+                        }
+                    }
+                    if (!ok) {
+                        log.warn("No se pudo escribir en el portapapeles");
+                        notifier.error("No se pudo escribir en el portapapeles (otra aplicación lo tiene bloqueado)");
                     }
                     return null;
                 });

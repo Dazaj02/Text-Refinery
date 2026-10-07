@@ -9,8 +9,9 @@ import java.util.Set;
  */
 public class Settings {
     public CleaningProfile defaultProfile = CleaningProfile.WORD;
-    public String cleanHotkey = "Ctrl+Alt+V";
-    public String aiHotkey = "Ctrl+Alt+B";
+    // Sin Alt: en Windows Ctrl+Alt equivale a AltGr y puede activar la cinta de Office; Ctrl+Alt+V es "Pegado especial" en Word.
+    public String cleanHotkey = "Ctrl+Shift+Y";
+    public String aiHotkey = "Ctrl+Shift+G";
     public AiMode aiMode = AiMode.GRAMMAR;
     public String ollamaUrl = "http://localhost:11434";
     public String aiModel = "llama3.2";

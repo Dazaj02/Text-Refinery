@@ -1,7 +1,7 @@
 {
   "defaultProfile": "WORD",
-  "cleanHotkey": "Ctrl+Alt+V",
-  "aiHotkey": "Ctrl+Alt+B",
+  "cleanHotkey": "Ctrl+Shift+Y",
+  "aiHotkey": "Ctrl+Shift+G",
   "aiMode": "GRAMMAR",
   "ollamaUrl": "http://localhost:11434",
   "aiModel": "llama3.2",

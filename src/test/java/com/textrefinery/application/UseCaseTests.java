@@ -20,6 +20,7 @@ class UseCaseTests {
     static class FakeClipboard implements ClipboardPort {
         String text;
         String html;
+        boolean locked;
 
         @Override
         public Optional<String> readText() {
@@ -32,8 +33,12 @@ class UseCaseTests {
         }
 
         @Override
-        public void writeText(String t) {
+        public boolean writeText(String t) {
+            if (locked) {
+                return false;
+            }
             text = t;
+            return true;
         }
     }
 
@@ -69,6 +74,15 @@ class UseCaseTests {
         clean.execute();
         assertThat(clipboard.text).isEqualTo("información útil");
         assertThat(notifier.infos).containsExactly("Texto limpio ✓");
+    }
+
+    @Test
+    void noDiceExitoSiNoPudoEscribir() {
+        clipboard.text = "hola  mundo";
+        clipboard.locked = true;
+        clean.execute();
+        assertThat(notifier.infos).isEmpty();
+        assertThat(notifier.errors).hasSize(1);
     }
 
     @Test

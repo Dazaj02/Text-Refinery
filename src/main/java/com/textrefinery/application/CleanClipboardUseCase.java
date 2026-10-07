@@ -31,8 +31,12 @@ public class CleanClipboardUseCase {
     /** Lee, limpia y vuelve a escribir en el portapapeles. */
     public void execute() {
         readAndClean().ifPresent(cleaned -> {
-            clipboard.writeText(cleaned);
-            notifier.info("Texto limpio ✓");
+            if (clipboard.writeText(cleaned)) {
+                notifier.info("Texto limpio ✓");
+            } else {
+                log.warn("No se pudo escribir en el portapapeles");
+                notifier.error("No se pudo escribir en el portapapeles (otra aplicación lo tiene bloqueado)");
+            }
         });
     }
 
@@ -54,7 +58,9 @@ public class CleanClipboardUseCase {
             notifier.error("El texto es demasiado largo (máx. " + s.maxClipboardChars + " caracteres)");
             return Optional.empty();
         }
-        return Optional.of(clean(raw.get(), s));
+        String cleaned = clean(raw.get(), s);
+        log.info("Limpieza aplicada: {} → {} caracteres (perfil {})", raw.get().length(), cleaned.length(), s.defaultProfile);
+        return Optional.of(cleaned);
     }
 
     /** Lógica pura, sin portapapeles: útil para pruebas y para la vista previa de ajustes. */

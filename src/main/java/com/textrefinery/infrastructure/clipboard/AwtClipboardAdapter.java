@@ -14,8 +14,8 @@ import org.slf4j.LoggerFactory;
 public class AwtClipboardAdapter implements ClipboardPort {
 
     private static final Logger log = LoggerFactory.getLogger(AwtClipboardAdapter.class);
-    private static final int ATTEMPTS = 5;
-    private static final long RETRY_DELAY_MS = 60;
+    private static final int ATTEMPTS = 10;
+    private static final long RETRY_DELAY_MS = 100;
 
     private final Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
 
@@ -30,11 +30,13 @@ public class AwtClipboardAdapter implements ClipboardPort {
     }
 
     @Override
-    public void writeText(String text) {
-        retry(() -> {
-            clipboard.setContents(new StringSelection(text), null);
-            return null;
-        });
+    public boolean writeText(String text) {
+        StringSelection selection = new StringSelection(text);
+        // Optional.ofNullable(TRUE) distingue éxito de "agotados los reintentos".
+        return retry(() -> {
+            clipboard.setContents(selection, selection);
+            return Boolean.TRUE;
+        }).isPresent();
     }
 
     private Optional<String> read(DataFlavor flavor) {

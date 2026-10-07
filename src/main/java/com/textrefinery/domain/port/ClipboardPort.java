@@ -10,5 +10,6 @@ public interface ClipboardPort {
     /** Fragmento HTML del portapapeles (p. ej. copiado desde un navegador), si existe. */
     Optional<String> readHtml();
 
-    void writeText(String text);
+    /** @return {@code true} si el texto quedó escrito; {@code false} si el sistema mantuvo el portapapeles bloqueado. */
+    boolean writeText(String text);
 }

@@ -58,7 +58,7 @@ class InfrastructureTests {
     void configuracionCorruptaVuelveALosValoresPorDefecto(@TempDir Path dir) throws Exception {
         Path file = dir.resolve("settings.json");
         java.nio.file.Files.writeString(file, "{ esto no es json");
-        assertThat(new JsonSettingsAdapter(file).load().cleanHotkey).isEqualTo("Ctrl+Alt+V");
+        assertThat(new JsonSettingsAdapter(file).load().cleanHotkey).isEqualTo("Ctrl+Shift+Y");
     }
 
     @Test
