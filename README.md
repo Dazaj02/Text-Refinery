@@ -67,6 +67,18 @@ Los iconos (`src/main/resources/icons/app.ico`, `.icns`, `.png`) se generan desd
 - **Linux**: el atajo global requiere X11 (con Wayland no recibe teclas de otras apps). La bandeja necesita una extensión de AppIndicator en GNOME; si no hay bandeja, las notificaciones van al log.
 - **Configuración**: `%APPDATA%\TextRefinery\settings.json`, `~/Library/Application Support/TextRefinery/settings.json` o `~/.config/text-refinery/settings.json`.
 
+## Registro y solución de problemas
+
+La app escribe `app.log` junto a `settings.json` (carpeta de configuración, ver arriba), con fecha y hora, y lo rota
+a `app.log.1` al superar 1 MB. Se abre desde el menú de bandeja con **Ver registro**. Sirve cuando la app se abre con
+doble clic y no hay consola. Solo contiene eventos, longitudes de texto y tipos de error, nunca el contenido copiado.
+
+| Síntoma | Qué mirar |
+|---|---|
+| El atajo no hace nada | Ver registro: ¿dice «No se pudo activar el atajo global»? Cambia la combinación en *Ajustes → Atajos e IA* |
+| «IA no disponible» | *Atajos e IA → Probar conexión*; ¿está Ollama corriendo y el modelo descargado? |
+| No arranca con el sistema | *General → Iniciar con el sistema*; no está disponible al ejecutar desde el código fuente |
+
 ## Privacidad
 
 Todo es local. El contenido del portapapeles nunca se registra en logs ni se envía fuera de la máquina (Ollama corre en `localhost`).

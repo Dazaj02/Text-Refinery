@@ -16,13 +16,18 @@ import com.textrefinery.infrastructure.config.JsonSettingsAdapter;
 import com.textrefinery.infrastructure.hotkey.GlobalHotkeyManager;
 import com.textrefinery.infrastructure.hotkey.Hotkey;
 import com.textrefinery.infrastructure.lock.SingleInstanceLock;
+import com.textrefinery.infrastructure.logging.FileLogging;
 import com.textrefinery.infrastructure.notify.LogNotifier;
 import com.textrefinery.infrastructure.notify.TrayNotifier;
 import com.textrefinery.infrastructure.platform.PlatformInfo;
 import com.textrefinery.ui.components.BrandLogo;
 import com.textrefinery.ui.settings.SettingsWindow;
 import com.textrefinery.ui.tray.TrayController;
+import java.awt.Desktop;
 import java.awt.Taskbar;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -34,6 +39,11 @@ import org.slf4j.LoggerFactory;
 /** Punto de entrada y composición de dependencias (aquí, y solo aquí, se conectan los adaptadores). */
 public final class App {
 
+    // Debe ir antes de crear el primer logger: duplica la salida de SLF4J Simple en app.log.
+    static {
+        FileLogging.install(AppPaths.configDir().resolve("app.log"));
+    }
+
     private static final Logger log = LoggerFactory.getLogger(App.class);
 
     private App() {
@@ -41,6 +51,15 @@ public final class App {
 
     public static void main(String[] args) throws Exception {
         System.setProperty("java.awt.headless", "false");
+        Thread.setDefaultUncaughtExceptionHandler((thread, error) -> {
+            // Solo tipo y traza, nunca el mensaje: podría arrastrar texto del usuario.
+            log.error("Excepción no controlada en {}: {}", thread.getName(), error.getClass().getName());
+            for (StackTraceElement frame : error.getStackTrace()) {
+                log.error("    en {}", frame);
+            }
+        });
+        log.info("Iniciando · Java {} · SO {} · lanzador {}", System.getProperty("java.version"),
+                System.getProperty("os.name"), System.getProperty("jpackage.app-path", "(java -jar)"));
 
         SingleInstanceLock lock = new SingleInstanceLock(AppPaths.configDir().resolve("app.lock"));
         if (!lock.tryAcquire()) {
@@ -107,6 +126,7 @@ public final class App {
                 },
                 paused::set,
                 settingsWindow::show,
+                () -> executor.submit(() -> openLog(notifier)),
                 exit));
 
         try {
@@ -127,6 +147,22 @@ public final class App {
         setDockIcon();
         log.info("Text Refinery listo. Limpieza: {}  IA: {}", settings.get().cleanHotkey, settings.get().aiHotkey);
         Runtime.getRuntime().addShutdownHook(new Thread(lock::release));
+    }
+
+    /** Abre app.log con el programa predeterminado del sistema (o su carpeta si no hay ninguno asociado). */
+    private static void openLog(NotifierPort notifier) {
+        Path file = AppPaths.configDir().resolve("app.log");
+        try {
+            Desktop desktop = Desktop.getDesktop();
+            if (Files.exists(file) && desktop.isSupported(Desktop.Action.OPEN)) {
+                desktop.open(file.toFile());
+            } else {
+                desktop.open(file.getParent().toFile());
+            }
+        } catch (IOException | RuntimeException e) {
+            log.warn("No se pudo abrir el registro: {}", e.getClass().getSimpleName());
+            notifier.error("No se pudo abrir el registro: " + file);
+        }
     }
 
     /** Lleva el arranque con el sistema al estado pedido; si el sistema lo rechaza, avisa y la app sigue. */

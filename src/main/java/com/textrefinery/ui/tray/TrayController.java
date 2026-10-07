@@ -24,7 +24,7 @@ public class TrayController {
 
     public record Actions(Runnable cleanNow, Runnable restoreOriginal, Consumer<AiMode> refine,
                           Consumer<CleaningProfile> profileChanged, Consumer<Boolean> pausedChanged,
-                          Runnable openSettings, Runnable exit) {
+                          Runnable openSettings, Runnable openLog, Runnable exit) {
     }
 
     private final TrayIcon trayIcon;
@@ -87,6 +87,10 @@ public class TrayController {
         MenuItem settingsItem = new MenuItem("Ajustes…");
         settingsItem.addActionListener(e -> actions.openSettings().run());
         menu.add(settingsItem);
+
+        MenuItem logItem = new MenuItem("Ver registro");
+        logItem.addActionListener(e -> actions.openLog().run());
+        menu.add(logItem);
 
         MenuItem exit = new MenuItem("Salir");
         exit.addActionListener(e -> actions.exit().run());
