@@ -144,6 +144,41 @@ public final class SettingsWindowCheck {
         });
     }
 
+    /** Página General: tema oscuro en vivo, guardado y restauración. */
+    static void paso4() {
+        ((ToggleButton) all(".nav-button").get(2)).fire();
+        later(400, () -> {
+            List<Node> segments = all(".segment"); // 3 del modo de IA + Claro y Oscuro
+            ToggleButton claro = (ToggleButton) segments.get(3);
+            ToggleButton oscuro = (ToggleButton) segments.get(4);
+            check("el tema empieza en Claro", claro.isSelected() && !root.getStyleClass().contains("dark"), "");
+
+            oscuro.fire();
+            later(300, () -> {
+                check("Oscuro se aplica al instante (clase 'dark')", root.getStyleClass().contains("dark"), root.getStyleClass().toString());
+                button(".button-primary", "Guardar cambios").fire();
+                later(300, () -> {
+                    check("Guardar persiste el tema", saved.get(saved.size() - 1).theme.name().equals("DARK"), saved.get(saved.size() - 1).theme.name());
+                    claro.fire();
+                    later(300, () -> {
+                        check("Claro quita la clase 'dark'", !root.getStyleClass().contains("dark"), "");
+                        oscuro.fire();
+                        later(200, () -> {
+                            // Restaurar vuelve al último estado guardado según 'current' (Claro): el tema se revierte
+                            button(".button-secondary", "Restaurar").fire();
+                            later(300, () -> {
+                                check("Restaurar revierte la vista previa del tema", !root.getStyleClass().contains("dark") && claro.isSelected(), "");
+                                System.out.println(fails == 0 ? "RESULTADO: todo OK" : "RESULTADO: " + fails + " fallos");
+                                Platform.exit();
+                                System.exit(fails == 0 ? 0 : 1);
+                            });
+                        });
+                    });
+                });
+            });
+        });
+    }
+
     static void paso3() {
         // Esc cancela
         Button change2 = all(".button-outline").stream().filter(n -> n instanceof Button b && "Cambiar".equals(b.getText())).map(n -> (Button) n).toList().get(1);
@@ -185,9 +220,7 @@ public final class SettingsWindowCheck {
                             button(".button-secondary", "Restaurar").fire();
                             later(200, () -> {
                                 check("Restaurar recarga el modelo original", "llama3.2".equals(((TextField) all(".text-field").get(0)).getText()), ((TextField) all(".text-field").get(0)).getText());
-                                System.out.println(fails == 0 ? "RESULTADO: todo OK" : "RESULTADO: " + fails + " fallos");
-                                Platform.exit();
-                                System.exit(fails == 0 ? 0 : 1);
+                                paso4();
                             });
                         });
                     });

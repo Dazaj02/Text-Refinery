@@ -20,6 +20,7 @@ public class Settings {
     public Set<String> disabledProcessors = new HashSet<>();
     /** Preferencia del usuario; el estado real del arranque lo guarda el sistema operativo (ver AutostartPort). */
     public boolean launchAtLogin = false;
+    public ThemeMode theme = ThemeMode.LIGHT;
 
     public Settings copy() {
         Settings c = new Settings();
@@ -33,6 +34,7 @@ public class Settings {
         c.maxClipboardChars = maxClipboardChars;
         c.disabledProcessors = new HashSet<>(disabledProcessors);
         c.launchAtLogin = launchAtLogin;
+        c.theme = theme;
         return c;
     }
 }

@@ -29,6 +29,13 @@
     -success: #1F8A5B;
     -success-ink: #1F6B49;
     -success-bg: #DDF4E8;
+    /* Semánticos: el mismo rojo no sirve como texto sobre claro y sobre oscuro, por eso el tema oscuro los redefine */
+    -accent-text: -red-600;
+    -accent-soft-text: -red-700;
+    -accent-deep-text: -red-800;
+    -danger-text: -red-700;
+    -result-bg: #FFFAFA;
+    -muted-2: #B7A5A8;
 
     -fx-font-family: "Segoe UI", "SF Pro Text", "Helvetica Neue", "Ubuntu", "System";
     -fx-font-size: 14px;
@@ -37,6 +44,37 @@
     -fx-accent: -red-600;
     -fx-focus-color: -red-400;
     -fx-faint-focus-color: transparent;
+}
+
+/* ---------- Tema oscuro: se activa con la clase "dark" en el nodo raíz ---------- */
+.root.dark {
+    -red-50: #3A1519;
+    -red-100: #4A1A20;
+    -red-200: #6B2229;
+    -red-300: #8E2C37;
+    -ink: #F6E9EA;
+    -ink-2: #E3CDD0;
+    -muted: #B9A0A4;
+    -muted-2: #7D6569;
+    -border: #3F2B2F;
+    -border-soft: #332226;
+    -input-border: #4E3338;
+    -bg: #190E10;
+    -surface: #251618;
+    -tint: #301F22;
+    -track-off: #4E3A3D;
+    -result-bg: #2B191C;
+    -success: #3DDC97;
+    -success-ink: #6FE3B0;
+    -success-bg: #17382A;
+    -accent-text: #FF6B7D;
+    -accent-soft-text: #FFB3BC;
+    -accent-deep-text: #FFC2C9;
+    -danger-text: #FF8A97;
+    /* Los controles de Modena (barras de desplazamiento, etc.) derivan sus tonos de -fx-base */
+    -fx-base: #251618;
+    -fx-control-inner-background: #251618;
+    -fx-background: #190E10;
 }
 
 .label { -fx-text-fill: -ink; }
@@ -103,13 +141,13 @@
 }
 .card-title { -fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: -ink; }
 .pane-left { -fx-border-color: transparent -border-soft transparent transparent; }
-.pane-result { -fx-background-color: #FFFAFA; -fx-background-radius: 0 0 14 0; }
+.pane-result { -fx-background-color: -result-bg; -fx-background-radius: 0 0 14 0; }
 .pane-label { -fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: -muted; }
-.pane-label-red { -fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: -red-600; }
+.pane-label-red { -fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: -accent-text; }
 
 /* ---------- Chips ---------- */
 .chip { -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 4 10 4 10; -fx-background-radius: 999; }
-.chip-red { -fx-background-color: -red-100; -fx-text-fill: -red-700; }
+.chip-red { -fx-background-color: -red-100; -fx-text-fill: -accent-soft-text; }
 .chip-muted { -fx-background-color: -tint; -fx-text-fill: -muted; }
 .chip-green { -fx-background-color: -success-bg; -fx-text-fill: -success-ink; }
 .chip-pill {
@@ -172,7 +210,7 @@
 /* ---------- Teclas ---------- */
 .keycap {
     -fx-background-color: -surface;
-    -fx-border-color: #D9CBCD #D9CBCD #D9CBCD #D9CBCD;
+    -fx-border-color: -track-off -track-off -track-off -track-off;
     -fx-border-width: 1 1 3 1;
     -fx-border-radius: 8; -fx-background-radius: 8;
     -fx-padding: 6 12 5 12;
@@ -182,8 +220,8 @@
     -fx-background-color: -red-600; -fx-border-color: -red-700; -fx-text-fill: white;
     -fx-padding: 6 14 5 14;
 }
-.keycap-plus { -fx-text-fill: #B7A5A8; -fx-font-weight: bold; }
-.keycap-capturing { -fx-text-fill: -red-600; -fx-font-weight: bold; }
+.keycap-plus { -fx-text-fill: -muted-2; -fx-font-weight: bold; }
+.keycap-capturing { -fx-text-fill: -accent-text; -fx-font-weight: bold; }
 
 /* ---------- Botones ---------- */
 .button-primary {
@@ -202,7 +240,7 @@
 }
 .button-secondary:hover { -fx-background-color: -tint; }
 .button-outline {
-    -fx-background-color: -surface; -fx-text-fill: -red-600;
+    -fx-background-color: -surface; -fx-text-fill: -accent-text;
     -fx-border-color: -input-border; -fx-border-radius: 9; -fx-background-radius: 9;
     -fx-font-size: 13px; -fx-font-weight: bold;
     -fx-padding: 8 14 8 14; -fx-cursor: hand;
@@ -214,7 +252,7 @@
     -fx-background-color: -surface;
     -fx-border-color: -input-border; -fx-border-radius: 9; -fx-background-radius: 9;
     -fx-padding: 10 12 10 12; -fx-font-size: 14px; -fx-text-fill: -ink;
-    -fx-prompt-text-fill: #B7A5A8; -fx-highlight-fill: -red-200; -fx-highlight-text-fill: -red-900;
+    -fx-prompt-text-fill: -muted-2; -fx-highlight-fill: -red-200; -fx-highlight-text-fill: -ink;
 }
 .text-field:focused { -fx-border-color: -red-600; -fx-border-width: 1.5; }
 .field-label { -fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: -ink-2; }
@@ -222,9 +260,10 @@
 .text-area {
     -fx-background-color: transparent;
     -fx-background-insets: 0; -fx-padding: 0;
-    -fx-highlight-fill: -red-200; -fx-highlight-text-fill: -red-900;
+    -fx-highlight-fill: -red-200; -fx-highlight-text-fill: -ink;
 }
 .text-area .content { -fx-background-color: transparent; -fx-padding: 4 0 4 0; }
+.text-area .text { -fx-fill: -ink; }
 .text-area:focused { -fx-background-color: transparent; }
 .text-area .scroll-pane { -fx-background-color: transparent; }
 .text-area .viewport { -fx-background-color: transparent; }
@@ -241,8 +280,8 @@
     -fx-border-radius: 11; -fx-background-radius: 11;
     -fx-padding: 12 14 12 14; -fx-spacing: 12; -fx-alignment: CENTER_LEFT;
 }
-.note-text { -fx-text-fill: -red-800; -fx-font-size: 13px; }
+.note-text { -fx-text-fill: -accent-deep-text; -fx-font-size: 13px; }
 .note-icon { -fx-stroke: -red-600; }
 
 .footer-ok { -fx-text-fill: -success-ink; -fx-font-size: 13px; -fx-font-weight: bold; }
-.footer-error { -fx-text-fill: -red-700; -fx-font-size: 13px; -fx-font-weight: bold; }
+.footer-error { -fx-text-fill: -danger-text; -fx-font-size: 13px; -fx-font-weight: bold; }

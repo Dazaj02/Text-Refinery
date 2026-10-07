@@ -47,11 +47,16 @@ class InfrastructureTests {
 
         first.defaultProfile = CleaningProfile.LATEX;
         first.disabledProcessors.add("QuoteNormalizer");
+        first.theme = com.textrefinery.domain.model.ThemeMode.DARK;
+        first.launchAtLogin = true;
         adapter.save(first);
 
         Settings second = adapter.load();
         assertThat(second.defaultProfile).isEqualTo(CleaningProfile.LATEX);
         assertThat(second.disabledProcessors).containsExactly("QuoteNormalizer");
+        assertThat(second.theme).isEqualTo(com.textrefinery.domain.model.ThemeMode.DARK);
+        assertThat(second.launchAtLogin).isTrue();
+        assertThat(second.copy().theme).isEqualTo(com.textrefinery.domain.model.ThemeMode.DARK);
     }
 
     @Test
@@ -59,6 +64,16 @@ class InfrastructureTests {
         Path file = dir.resolve("settings.json");
         java.nio.file.Files.writeString(file, "{ esto no es json");
         assertThat(new JsonSettingsAdapter(file).load().cleanHotkey).isEqualTo("Ctrl+Shift+Y");
+    }
+
+    @Test
+    void unaConfiguracionAnteriorSinTemaSigueSiendoValida(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("settings.json");
+        java.nio.file.Files.writeString(file, "{\"defaultProfile\":\"LATEX\",\"cleanHotkey\":\"Ctrl+Shift+Y\"}");
+        Settings s = new JsonSettingsAdapter(file).load();
+        assertThat(s.defaultProfile).isEqualTo(CleaningProfile.LATEX);
+        assertThat(s.theme).isEqualTo(com.textrefinery.domain.model.ThemeMode.LIGHT);
+        assertThat(s.launchAtLogin).isFalse();
     }
 
     @Test

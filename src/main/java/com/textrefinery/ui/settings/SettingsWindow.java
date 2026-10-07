@@ -1,6 +1,7 @@
 package com.textrefinery.ui.settings;
 
 import com.textrefinery.domain.model.Settings;
+import com.textrefinery.domain.model.ThemeMode;
 import com.textrefinery.domain.port.AutostartPort;
 import com.textrefinery.domain.port.SettingsPort;
 import com.textrefinery.ui.components.BrandLogo;
@@ -70,7 +71,9 @@ public class SettingsWindow {
 
     /** Construye la ventana sin mostrarla (también la usan las capturas de pantalla de documentación). */
     Stage createStage() {
-        List<SettingsPage> pages = List.of(new CleaningPage(), new ShortcutsPage(), new GeneralPage(autostart));
+        BorderPane root = new BorderPane();
+        List<SettingsPage> pages = List.of(new CleaningPage(), new ShortcutsPage(),
+                new GeneralPage(autostart, mode -> applyTheme(root, mode)));
         pages.forEach(p -> p.load(current.get()));
 
         StackPane pageHost = new StackPane();
@@ -119,7 +122,6 @@ public class SettingsWindow {
         content.setCenter(pageHost);
         content.setBottom(footer);
 
-        BorderPane root = new BorderPane();
         root.setLeft(sidebar(pages, pageHost));
         root.setCenter(content);
 
@@ -133,6 +135,14 @@ public class SettingsWindow {
         st.setMinHeight(660);
         st.setScene(scene);
         return st;
+    }
+
+    /** Activa o quita la clase "dark" en el nodo raíz; el CSS redefine la paleta con ella. */
+    private static void applyTheme(Node root, ThemeMode mode) {
+        root.getStyleClass().remove("dark");
+        if (mode == ThemeMode.DARK) {
+            root.getStyleClass().add("dark");
+        }
     }
 
     private static void showStatus(Label label, String text, String styleClass) {
