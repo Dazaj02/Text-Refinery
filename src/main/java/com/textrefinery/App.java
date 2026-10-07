@@ -1,5 +1,6 @@
 package com.textrefinery;
 
+import com.github.kwhat.jnativehook.NativeHookException;
 import com.textrefinery.application.CleanClipboardUseCase;
 import com.textrefinery.application.PipelineFactory;
 import com.textrefinery.application.RefineWithAiUseCase;
@@ -14,8 +15,11 @@ import com.textrefinery.infrastructure.hotkey.Hotkey;
 import com.textrefinery.infrastructure.lock.SingleInstanceLock;
 import com.textrefinery.infrastructure.notify.LogNotifier;
 import com.textrefinery.infrastructure.notify.TrayNotifier;
+import com.textrefinery.infrastructure.platform.PlatformInfo;
+import com.textrefinery.ui.components.BrandLogo;
 import com.textrefinery.ui.settings.SettingsWindow;
 import com.textrefinery.ui.tray.TrayController;
+import java.awt.Taskbar;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -98,9 +102,38 @@ public final class App {
                 settingsWindow::show,
                 exit));
 
-        hotkeys.start();
+        try {
+            hotkeys.start();
+        } catch (NativeHookException | UnsatisfiedLinkError | RuntimeException e) {
+            // La app sigue viva: el menú de la bandeja y la ventana de ajustes funcionan sin atajo global.
+            log.error("No se pudo activar el atajo global: {}", e.getClass().getSimpleName());
+            notifier.error("No se pudo activar el atajo global. "
+                    + PlatformInfo.hotkeyProblemHint(PlatformInfo.current(), PlatformInfo.isWayland()));
+        }
+
+        if (tray.icon().isEmpty()) {
+            // Sin bandeja (p. ej. algunos escritorios Linux) la ventana de ajustes es la única interfaz.
+            log.warn("El sistema no ofrece bandeja: se abre la ventana de ajustes; al cerrarla termina la app.");
+            settingsWindow.setOnClosed(exit);
+            settingsWindow.show();
+        }
+        setDockIcon();
         log.info("Text Refinery listo. Limpieza: {}  IA: {}", settings.get().cleanHotkey, settings.get().aiHotkey);
         Runtime.getRuntime().addShutdownHook(new Thread(lock::release));
+    }
+
+    /** En macOS el icono del Dock sería el de Java; se sustituye por el logo (en otros sistemas no hace nada). */
+    private static void setDockIcon() {
+        if (PlatformInfo.current() != PlatformInfo.Os.MAC) {
+            return;
+        }
+        try {
+            if (Taskbar.isTaskbarSupported() && Taskbar.getTaskbar().isSupported(Taskbar.Feature.ICON_IMAGE)) {
+                Taskbar.getTaskbar().setIconImage(BrandLogo.awtImage(256));
+            }
+        } catch (RuntimeException e) {
+            log.debug("No se pudo poner el icono del Dock: {}", e.getClass().getSimpleName());
+        }
     }
 
     private static void applyHotkeys(GlobalHotkeyManager hotkeys, Settings s) {
