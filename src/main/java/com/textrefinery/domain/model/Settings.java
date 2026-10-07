@@ -18,6 +18,8 @@ public class Settings {
     public int aiTimeoutSeconds = 60;
     public int maxClipboardChars = 200_000;
     public Set<String> disabledProcessors = new HashSet<>();
+    /** Preferencia del usuario; el estado real del arranque lo guarda el sistema operativo (ver AutostartPort). */
+    public boolean launchAtLogin = false;
 
     public Settings copy() {
         Settings c = new Settings();
@@ -30,6 +32,7 @@ public class Settings {
         c.aiTimeoutSeconds = aiTimeoutSeconds;
         c.maxClipboardChars = maxClipboardChars;
         c.disabledProcessors = new HashSet<>(disabledProcessors);
+        c.launchAtLogin = launchAtLogin;
         return c;
     }
 }

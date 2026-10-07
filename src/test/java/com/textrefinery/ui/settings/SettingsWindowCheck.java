@@ -68,7 +68,11 @@ public final class SettingsWindowCheck {
             SettingsWindow w = new SettingsWindow(new SettingsPort() {
                 public Settings load() { return s; }
                 public void save(Settings x) { saved.add(x); }
-            }, () -> s, applied::add);
+            }, () -> s, applied::add, new com.textrefinery.domain.port.AutostartPort() {
+                public boolean isSupported() { return false; }
+                public boolean isEnabled() { return false; }
+                public void setEnabled(boolean e) { }
+            });
             st = w.createStage();
             st.show();
             root = st.getScene().getRoot();

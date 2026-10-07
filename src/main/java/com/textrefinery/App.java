@@ -5,8 +5,11 @@ import com.textrefinery.application.CleanClipboardUseCase;
 import com.textrefinery.application.PipelineFactory;
 import com.textrefinery.application.RefineWithAiUseCase;
 import com.textrefinery.domain.model.Settings;
+import com.textrefinery.domain.port.AutostartException;
+import com.textrefinery.domain.port.AutostartPort;
 import com.textrefinery.domain.port.NotifierPort;
 import com.textrefinery.infrastructure.ai.OllamaAiProvider;
+import com.textrefinery.infrastructure.autostart.SystemAutostart;
 import com.textrefinery.infrastructure.clipboard.AwtClipboardAdapter;
 import com.textrefinery.infrastructure.config.AppPaths;
 import com.textrefinery.infrastructure.config.JsonSettingsAdapter;
@@ -84,11 +87,13 @@ public final class App {
             System.exit(0);
         };
 
+        AutostartPort autostart = new SystemAutostart();
         SettingsWindow settingsWindow = new SettingsWindow(settingsAdapter, settings::get, updated -> {
             settings.set(updated);
             applyHotkeys(hotkeys, updated);
             tray.selectProfile(updated.defaultProfile);
-        });
+            executor.submit(() -> syncAutostart(autostart, updated.launchAtLogin, notifier));
+        }, autostart);
 
         tray.install(settings.get(), new TrayController.Actions(
                 () -> executor.submit(clean::execute),
@@ -121,6 +126,19 @@ public final class App {
         setDockIcon();
         log.info("Text Refinery listo. Limpieza: {}  IA: {}", settings.get().cleanHotkey, settings.get().aiHotkey);
         Runtime.getRuntime().addShutdownHook(new Thread(lock::release));
+    }
+
+    /** Lleva el arranque con el sistema al estado pedido; si el sistema lo rechaza, avisa y la app sigue. */
+    private static void syncAutostart(AutostartPort autostart, boolean wanted, NotifierPort notifier) {
+        try {
+            if (autostart.isSupported() && autostart.isEnabled() != wanted) {
+                autostart.setEnabled(wanted);
+                log.info("Arranque con el sistema: {}", wanted ? "activado" : "desactivado");
+            }
+        } catch (AutostartException e) {
+            log.warn("No se pudo cambiar el arranque con el sistema: {}", e.getMessage());
+            notifier.error("No se pudo cambiar el arranque con el sistema.");
+        }
     }
 
     /** En macOS el icono del Dock sería el de Java; se sustituye por el logo (en otros sistemas no hace nada). */

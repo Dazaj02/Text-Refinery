@@ -1,6 +1,7 @@
 package com.textrefinery.ui.settings;
 
 import com.textrefinery.domain.model.Settings;
+import com.textrefinery.domain.port.AutostartPort;
 import com.textrefinery.domain.port.SettingsPort;
 import com.textrefinery.ui.components.BrandLogo;
 import com.textrefinery.ui.components.Icons;
@@ -36,6 +37,7 @@ public class SettingsWindow {
     private final SettingsPort port;
     private final Supplier<Settings> current;
     private final Consumer<Settings> onSaved;
+    private final AutostartPort autostart;
     private Stage stage;
     private Runnable onClosed = () -> { };
 
@@ -44,10 +46,12 @@ public class SettingsWindow {
         this.onClosed = onClosed;
     }
 
-    public SettingsWindow(SettingsPort port, Supplier<Settings> current, Consumer<Settings> onSaved) {
+    public SettingsWindow(SettingsPort port, Supplier<Settings> current, Consumer<Settings> onSaved,
+                          AutostartPort autostart) {
         this.port = port;
         this.current = current;
         this.onSaved = onSaved;
+        this.autostart = autostart;
     }
 
     /** Seguro de llamar desde cualquier hilo. */
@@ -66,7 +70,7 @@ public class SettingsWindow {
 
     /** Construye la ventana sin mostrarla (también la usan las capturas de pantalla de documentación). */
     Stage createStage() {
-        List<SettingsPage> pages = List.of(new CleaningPage(), new ShortcutsPage());
+        List<SettingsPage> pages = List.of(new CleaningPage(), new ShortcutsPage(), new GeneralPage(autostart));
         pages.forEach(p -> p.load(current.get()));
 
         StackPane pageHost = new StackPane();
