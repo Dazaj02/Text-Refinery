@@ -5,6 +5,7 @@ import com.textrefinery.domain.model.CleaningProfile;
 import com.textrefinery.domain.model.Settings;
 import com.textrefinery.ui.components.BrandLogo;
 import java.awt.CheckboxMenuItem;
+import java.awt.EventQueue;
 import java.awt.Menu;
 import java.awt.MenuItem;
 import java.awt.PopupMenu;
@@ -26,6 +27,7 @@ public class TrayController {
     }
 
     private final TrayIcon trayIcon;
+    private final Map<CleaningProfile, CheckboxMenuItem> profileBoxes = new EnumMap<>(CleaningProfile.class);
 
     public TrayController() {
         trayIcon = SystemTray.isSupported()
@@ -61,14 +63,13 @@ public class TrayController {
         menu.addSeparator();
 
         Menu profiles = new Menu("Perfil");
-        Map<CleaningProfile, CheckboxMenuItem> boxes = new EnumMap<>(CleaningProfile.class);
         for (CleaningProfile profile : CleaningProfile.values()) {
             CheckboxMenuItem box = new CheckboxMenuItem(profile.label(), profile == settings.defaultProfile);
             box.addItemListener(e -> {
-                boxes.forEach((p, b) -> b.setState(p == profile));
+                selectProfile(profile);
                 actions.profileChanged().accept(profile);
             });
-            boxes.put(profile, box);
+            profileBoxes.put(profile, box);
             profiles.add(box);
         }
         menu.add(profiles);
@@ -93,6 +94,14 @@ public class TrayController {
         } catch (java.awt.AWTException e) {
             throw new IllegalStateException("No se pudo añadir el icono a la bandeja", e);
         }
+    }
+
+    /**
+     * Marca un perfil en el menú sin disparar el callback (para reflejar cambios hechos desde la ventana de ajustes).
+     * Seguro de llamar desde cualquier hilo.
+     */
+    public void selectProfile(CleaningProfile selected) {
+        EventQueue.invokeLater(() -> profileBoxes.forEach((p, box) -> box.setState(p == selected)));
     }
 
     public void remove() {

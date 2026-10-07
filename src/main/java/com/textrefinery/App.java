@@ -87,6 +87,7 @@ public final class App {
         SettingsWindow settingsWindow = new SettingsWindow(settingsAdapter, settings::get, updated -> {
             settings.set(updated);
             applyHotkeys(hotkeys, updated);
+            tray.selectProfile(updated.defaultProfile);
         });
 
         tray.install(settings.get(), new TrayController.Actions(
