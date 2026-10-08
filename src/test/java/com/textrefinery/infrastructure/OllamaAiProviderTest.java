@@ -34,6 +34,8 @@ class OllamaAiProviderTest {
     private final ObjectMapper mapper = new ObjectMapper();
     private final List<JsonNode> requests = new CopyOnWriteArrayList<>();
     private final Settings settings = new Settings();
+    private final com.textrefinery.infrastructure.i18n.ResourceBundleMessages messages =
+            new com.textrefinery.infrastructure.i18n.ResourceBundleMessages(com.textrefinery.domain.model.Language.ES);
     private HttpServer server;
     private volatile int status = 200;
     private volatile String reply = "{\"response\":\"  Texto refinado.  \"}";
@@ -82,11 +84,11 @@ class OllamaAiProviderTest {
 
     @Test
     void elIdiomaElegidoLlegaAlPromptQueSeEnvia() {
-        settings.textLanguage = com.textrefinery.domain.model.TextLanguage.EN;
+        settings.textLanguage = com.textrefinery.domain.model.Language.EN;
         new OllamaAiProvider(() -> settings).refine("hello there", AiMode.GRAMMAR);
         assertThat(requests.get(0).get("prompt").asText()).contains("English copy editor").doesNotContain("corrector");
 
-        settings.textLanguage = com.textrefinery.domain.model.TextLanguage.ES;
+        settings.textLanguage = com.textrefinery.domain.model.Language.ES;
         new OllamaAiProvider(() -> settings).refine("hola", AiMode.GRAMMAR);
         assertThat(requests.get(1).get("prompt").asText()).contains("corrector de estilo");
     }
@@ -129,8 +131,8 @@ class OllamaAiProviderTest {
         };
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
-            CleanClipboardUseCase clean = new CleanClipboardUseCase(fake, new PipelineFactory(), notifier, () -> settings);
-            new RefineWithAiUseCase(clean, new OllamaAiProvider(() -> settings), fake, notifier, () -> settings, pool)
+            CleanClipboardUseCase clean = new CleanClipboardUseCase(fake, new PipelineFactory(), notifier, () -> settings, messages);
+            new RefineWithAiUseCase(clean, new OllamaAiProvider(() -> settings), fake, notifier, () -> settings, pool, messages)
                     .execute(AiMode.GRAMMAR).join();
         } finally {
             pool.shutdownNow();
@@ -156,8 +158,8 @@ class OllamaAiProviderTest {
         };
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
-            CleanClipboardUseCase clean = new CleanClipboardUseCase(fake, new PipelineFactory(), notifier, () -> settings);
-            new RefineWithAiUseCase(clean, new OllamaAiProvider(() -> settings), fake, notifier, () -> settings, pool)
+            CleanClipboardUseCase clean = new CleanClipboardUseCase(fake, new PipelineFactory(), notifier, () -> settings, messages);
+            new RefineWithAiUseCase(clean, new OllamaAiProvider(() -> settings), fake, notifier, () -> settings, pool, messages)
                     .execute(AiMode.SUMMARIZE).join();
         } finally {
             pool.shutdownNow();

@@ -4,6 +4,7 @@ import com.textrefinery.application.PipelineFactory;
 import com.textrefinery.domain.model.CleaningProfile;
 import com.textrefinery.domain.model.ProcessingContext;
 import com.textrefinery.domain.model.Settings;
+import com.textrefinery.domain.port.MessagesPort;
 import com.textrefinery.ui.components.Fonts;
 import com.textrefinery.ui.components.Icons;
 import com.textrefinery.ui.components.ToggleSwitch;
@@ -37,47 +38,50 @@ import javafx.util.Duration;
 /** Perfil de salida, procesadores activos y vista previa en vivo con el pipeline real. */
 final class CleaningPage implements SettingsPage {
 
-    /** Un procesador configurable. {@code onlyFor} vacío = aplica a todos los perfiles. */
-    record ProcessorInfo(String name, String label, String hint, Set<CleaningProfile> onlyFor) {
+    /**
+     * Un procesador configurable. {@code onlyFor} vacío = aplica a todos los perfiles.
+     * Su nombre y ayuda visibles están en los mensajes: {@code processor.<name>.label} y {@code .hint}.
+     */
+    record ProcessorInfo(String name, Set<CleaningProfile> onlyFor) {
     }
 
     /** Debe coincidir con {@link PipelineFactory#processorNames()} (lo comprueba una prueba). */
     static final List<ProcessorInfo> PROCESSORS = List.of(
-            new ProcessorInfo("HtmlToMarkdownConverter", "HTML a Markdown", "Convierte lo copiado de la web", Set.of(CleaningProfile.MARKDOWN)),
-            new ProcessorInfo("HtmlStripper", "Quitar etiquetas HTML", "Deja solo el texto", Set.of(CleaningProfile.PLAIN)),
-            new ProcessorInfo("ControlCharRemover", "Caracteres invisibles", "Control y ancho cero", Set.of()),
-            new ProcessorInfo("LigatureFixer", "Ligaduras", "ﬁ → fi · ﬂ → fl", Set.of()),
-            new ProcessorInfo("HyphenationFixer", "Guiones de partición", "infor-↵mación → información", Set.of()),
-            new ProcessorInfo("LineBreakJoiner", "Saltos de línea", "Une líneas, respeta párrafos", Set.of()),
-            new ProcessorInfo("QuoteNormalizer", "Comillas rectas", "Comillas curvas → rectas", Set.of()),
-            new ProcessorInfo("WhitespaceNormalizer", "Espacios", "Colapsa y recorta", Set.of()),
-            new ProcessorInfo("LatexEscaper", "Escapar para LaTeX", "% & _ # $ { } ~ ^ \\", Set.of(CleaningProfile.LATEX)));
+            new ProcessorInfo("HtmlToMarkdownConverter", Set.of(CleaningProfile.MARKDOWN)),
+            new ProcessorInfo("HtmlStripper", Set.of(CleaningProfile.PLAIN)),
+            new ProcessorInfo("ControlCharRemover", Set.of()),
+            new ProcessorInfo("LigatureFixer", Set.of()),
+            new ProcessorInfo("HyphenationFixer", Set.of()),
+            new ProcessorInfo("LineBreakJoiner", Set.of()),
+            new ProcessorInfo("QuoteNormalizer", Set.of()),
+            new ProcessorInfo("WhitespaceNormalizer", Set.of()),
+            new ProcessorInfo("LatexEscaper", Set.of(CleaningProfile.LATEX)));
 
-    private static final String SAMPLE = "El 50% de la inves-\ntigación sobre la eﬁciencia   energética crece.\n"
-            + "El “consumo”   sigue\nsubiendo.";
-
-    private static final Map<CleaningProfile, String[]> PROFILE_TEXT = new EnumMap<>(CleaningProfile.class);
+    private static final Map<CleaningProfile, String> PROFILE_GLYPH = new EnumMap<>(CleaningProfile.class);
 
     static {
-        PROFILE_TEXT.put(CleaningProfile.WORD, new String[]{"W", "Texto limpio para documentos."});
-        PROFILE_TEXT.put(CleaningProfile.LATEX, new String[]{"Tx", "Escapa % & _ # $ { }."});
-        PROFILE_TEXT.put(CleaningProfile.MARKDOWN, new String[]{"M↓", "Convierte el HTML copiado."});
-        PROFILE_TEXT.put(CleaningProfile.PLAIN, new String[]{"Aa", "Sin etiquetas ni formato."});
+        PROFILE_GLYPH.put(CleaningProfile.WORD, "W");
+        PROFILE_GLYPH.put(CleaningProfile.LATEX, "Tx");
+        PROFILE_GLYPH.put(CleaningProfile.MARKDOWN, "M↓");
+        PROFILE_GLYPH.put(CleaningProfile.PLAIN, "Aa");
     }
 
+    private final MessagesPort messages;
     private final PipelineFactory factory = new PipelineFactory();
     private final ToggleGroup profileGroup = new ToggleGroup();
     private final Map<CleaningProfile, ToggleButton> cards = new EnumMap<>(CleaningProfile.class);
     private final Map<String, ToggleSwitch> switches = new LinkedHashMap<>();
     private final Map<String, Node> rows = new LinkedHashMap<>();
-    private final TextArea input = new TextArea(SAMPLE);
+    private final TextArea input;
     private final TextArea output = new TextArea();
     private final Label deltaChip = new Label();
     private final Label resultLabel = new Label();
     private final PauseTransition debounce = new PauseTransition(Duration.millis(150));
     private final ScrollPane root = new ScrollPane();
 
-    CleaningPage() {
+    CleaningPage(MessagesPort messages) {
+        this.messages = messages;
+        this.input = new TextArea(messages.get("preview.sample"));
         debounce.setOnFinished(e -> refresh());
 
         VBox content = new VBox(22, header(), profiles(), workArea());
@@ -99,7 +103,7 @@ final class CleaningPage implements SettingsPage {
 
     @Override
     public String title() {
-        return "Limpieza";
+        return messages.get("nav.cleaning");
     }
 
     @Override
@@ -135,15 +139,15 @@ final class CleaningPage implements SettingsPage {
     // ---------------------------------------------------------------- construcción
 
     private Node header() {
-        Label title = new Label("Limpieza");
+        Label title = new Label(messages.get("cleaning.title"));
         title.getStyleClass().add("page-title");
-        Label sub = new Label("Elige cómo quieres recibir el texto que pegas.");
+        Label sub = new Label(messages.get("cleaning.subtitle"));
         sub.getStyleClass().add("page-subtitle");
         return new VBox(4, title, sub);
     }
 
     private Node profiles() {
-        Label label = new Label("PERFIL DE SALIDA");
+        Label label = new Label(messages.get("cleaning.profileLabel"));
         label.getStyleClass().add("section-label");
 
         GridPane grid = new GridPane();
@@ -163,16 +167,17 @@ final class CleaningPage implements SettingsPage {
     }
 
     private ToggleButton profileCard(CleaningProfile profile) {
-        String[] text = PROFILE_TEXT.get(profile);
+        String profileName = messages.get("profile." + profile.name());
+        String profileDesc = messages.get("profile." + profile.name() + ".desc");
 
-        Label glyph = new Label(text[0]);
+        Label glyph = new Label(PROFILE_GLYPH.get(profile));
         glyph.getStyleClass().add("profile-badge-text");
         StackPane badge = new StackPane(glyph);
         badge.getStyleClass().add("profile-badge");
 
-        Label name = new Label(profile.label());
+        Label name = new Label(profileName);
         name.getStyleClass().add("profile-name");
-        Label desc = new Label(text[1]);
+        Label desc = new Label(profileDesc);
         desc.getStyleClass().add("profile-desc");
         desc.setWrapText(true);
 
@@ -188,7 +193,7 @@ final class CleaningPage implements SettingsPage {
         card.setMinHeight(Region.USE_PREF_SIZE);
         card.setMaxHeight(Region.USE_PREF_SIZE);
         card.setToggleGroup(profileGroup);
-        card.setAccessibleText(profile.label() + ". " + text[1]);
+        card.setAccessibleText(profileName + ". " + profileDesc);
         desc.maxWidthProperty().bind(card.widthProperty().subtract(32));
         return card;
     }
@@ -207,7 +212,7 @@ final class CleaningPage implements SettingsPage {
     }
 
     private Node previewCard() {
-        Label title = new Label("Vista previa");
+        Label title = new Label(messages.get("preview.title"));
         title.getStyleClass().add("card-title");
         deltaChip.getStyleClass().addAll("chip", "chip-red");
         Region spacer = new Region();
@@ -215,7 +220,7 @@ final class CleaningPage implements SettingsPage {
         HBox header = new HBox(8, title, spacer, deltaChip);
         header.getStyleClass().add("card-header");
 
-        Label originalLabel = new Label("ORIGINAL (editable)");
+        Label originalLabel = new Label(messages.get("preview.original"));
         originalLabel.getStyleClass().add("pane-label");
         configure(input, true);
         input.textProperty().addListener((obs, was, now) -> debounce.playFromStart());
@@ -252,7 +257,7 @@ final class CleaningPage implements SettingsPage {
     }
 
     private Node processorsCard() {
-        Label title = new Label("Procesadores");
+        Label title = new Label(messages.get("processors.title"));
         title.getStyleClass().add("card-title");
         HBox header = new HBox(title);
         header.getStyleClass().add("card-header");
@@ -260,14 +265,15 @@ final class CleaningPage implements SettingsPage {
         VBox list = new VBox(2);
         list.setPadding(new Insets(6, 0, 6, 0));
         for (ProcessorInfo info : PROCESSORS) {
-            Label name = new Label(info.label());
+            String label = messages.get("processor." + info.name() + ".label");
+            Label name = new Label(label);
             name.getStyleClass().add("processor-title");
-            Label hint = new Label(info.hint());
+            Label hint = new Label(messages.get("processor." + info.name() + ".hint"));
             hint.getStyleClass().add("processor-hint");
             VBox texts = new VBox(1, name, hint);
 
             ToggleSwitch sw = new ToggleSwitch();
-            sw.setAccessibleText(info.label());
+            sw.setAccessibleText(label);
             sw.selectedProperty().addListener((obs, was, now) -> debounce.playFromStart());
             switches.put(info.name(), sw);
 
@@ -324,12 +330,13 @@ final class CleaningPage implements SettingsPage {
         try {
             out = factory.build(profile, disabled).process(in, ProcessingContext.of(profile));
         } catch (RuntimeException e) {
-            out = "No se pudo procesar la vista previa (" + e.getClass().getSimpleName() + ")";
+            out = messages.get("preview.error", e.getClass().getSimpleName());
         }
         output.setText(out);
-        resultLabel.setText("RESULTADO · " + profile.label().toUpperCase(Locale.ROOT));
+        resultLabel.setText(messages.get("preview.result",
+                messages.get("profile." + profile.name()).toUpperCase(Locale.ROOT)));
 
         int delta = in.length() - out.length();
-        deltaChip.setText(delta >= 0 ? delta + " caracteres menos" : (-delta) + " caracteres más");
+        deltaChip.setText(delta >= 0 ? messages.get("preview.charsLess", delta) : messages.get("preview.charsMore", -delta));
     }
 }

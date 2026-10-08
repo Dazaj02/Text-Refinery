@@ -53,7 +53,24 @@ texto sobre oscuro, por eso existen las variables semánticas `-accent-*` y `-da
 |---|---|
 | Limpieza | Perfil de salida, vista previa en vivo con el pipeline real, procesadores activos |
 | Atajos e IA | Atajos con captura de teclas, modo de IA, conexión con Ollama |
-| General | Iniciar con el sistema, tema claro/oscuro, idioma del texto (Español / English) |
+| General | Iniciar con el sistema, tema claro/oscuro, idioma de la aplicación y del texto (Español / English) |
+
+## Idiomas (i18n)
+
+Todos los textos que ve el usuario salen de `src/main/resources/i18n/messages_<es|en>.properties` a través de `MessagesPort`:
+ventana de ajustes, menú de bandeja y avisos. Cambian en caliente al guardar (la ventana se reconstruye y el menú de bandeja se
+vuelve a crear conservando el perfil y la pausa). Reglas:
+
+- Cada clave debe estar en **los dos** archivos y con los mismos marcadores `{0}`; `MessagesTest` lo comprueba, igual que las
+  claves compuestas a partir de enums (perfiles, modos de IA, procesadores): añadir un valor sin traducir rompe la prueba.
+- Los nombres de los idiomas («Español», «English») no se traducen: cada uno se reconoce por el suyo.
+- Los registros (`app.log`) y las excepciones técnicas quedan en español: son para quien desarrolla, no para quien usa.
+- Para añadir un idioma: un valor en `Language`, un `messages_xx.properties` y una carpeta `prompts/xx/`.
+
+## Guardar
+
+«Guardar cambios» valida todas las páginas; si algo es inválido muestra el error en el pie y **no** cambia de página. Si todo
+es válido guarda, reconstruye la ventana (aplica el idioma y el tema) y vuelve a la página principal (Limpieza).
 
 ## Estructura
 

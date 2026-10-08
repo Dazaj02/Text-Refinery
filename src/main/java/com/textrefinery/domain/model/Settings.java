@@ -21,7 +21,10 @@ public class Settings {
     /** Preferencia del usuario; el estado real del arranque lo guarda el sistema operativo (ver AutostartPort). */
     public boolean launchAtLogin = false;
     public ThemeMode theme = ThemeMode.LIGHT;
-    public TextLanguage textLanguage = TextLanguage.ES;
+    /** Idioma en el que se pide el trabajo a la IA. */
+    public Language textLanguage = Language.ES;
+    /** Idioma de la interfaz; si el JSON no lo trae se toma del sistema. */
+    public Language appLanguage = Language.fromLocale(java.util.Locale.getDefault());
 
     public Settings copy() {
         Settings c = new Settings();
@@ -37,6 +40,7 @@ public class Settings {
         c.launchAtLogin = launchAtLogin;
         c.theme = theme;
         c.textLanguage = textLanguage;
+        c.appLanguage = appLanguage;
         return c;
     }
 }

@@ -1,7 +1,7 @@
 package com.textrefinery.infrastructure.ai;
 
 import com.textrefinery.domain.model.AiMode;
-import com.textrefinery.domain.model.TextLanguage;
+import com.textrefinery.domain.model.Language;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -13,11 +13,11 @@ public final class PromptTemplates {
     private PromptTemplates() {
     }
 
-    public static String render(AiMode mode, TextLanguage language, String text) {
+    public static String render(AiMode mode, Language language, String text) {
         return load(mode, language).replace("{{texto}}", text);
     }
 
-    static String load(AiMode mode, TextLanguage language) {
+    static String load(AiMode mode, Language language) {
         String path = "/prompts/" + language.code() + "/" + mode.name().toLowerCase() + ".txt";
         try (InputStream in = PromptTemplates.class.getResourceAsStream(path)) {
             if (in == null) {

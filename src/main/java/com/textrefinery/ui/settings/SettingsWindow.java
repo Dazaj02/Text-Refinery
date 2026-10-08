@@ -3,6 +3,7 @@ package com.textrefinery.ui.settings;
 import com.textrefinery.domain.model.Settings;
 import com.textrefinery.domain.model.ThemeMode;
 import com.textrefinery.domain.port.AutostartPort;
+import com.textrefinery.domain.port.MessagesPort;
 import com.textrefinery.domain.port.SettingsPort;
 import com.textrefinery.ui.components.BrandLogo;
 import com.textrefinery.ui.components.Icons;
@@ -14,6 +15,7 @@ import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -30,29 +32,32 @@ import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
-/** Ventana de ajustes (JavaFX): barra lateral, páginas y pie con Restaurar / Guardar. Solo existe mientras está abierta. */
+/**
+ * Ventana de ajustes (JavaFX): barra lateral, páginas y pie con Restaurar / Guardar. Solo existe mientras está abierta.
+ * Al guardar se reconstruye todo el contenido: así se aplica el idioma nuevo y se vuelve a la página principal.
+ */
 public class SettingsWindow {
-
-    private static final String HINT = "Los cambios se aplican al guardar.";
 
     private final SettingsPort port;
     private final Supplier<Settings> current;
     private final Consumer<Settings> onSaved;
     private final AutostartPort autostart;
+    private final MessagesPort messages;
     private Stage stage;
     private Runnable onClosed = () -> { };
 
-    /** Se ejecuta cuando el usuario cierra la ventana (sin bandeja, cerrarla cierra la app). */
-    public void setOnClosed(Runnable onClosed) {
-        this.onClosed = onClosed;
-    }
-
     public SettingsWindow(SettingsPort port, Supplier<Settings> current, Consumer<Settings> onSaved,
-                          AutostartPort autostart) {
+                          AutostartPort autostart, MessagesPort messages) {
         this.port = port;
         this.current = current;
         this.onSaved = onSaved;
         this.autostart = autostart;
+        this.messages = messages;
+    }
+
+    /** Se ejecuta cuando el usuario cierra la ventana (sin bandeja, cerrarla cierra la app). */
+    public void setOnClosed(Runnable onClosed) {
+        this.onClosed = onClosed;
     }
 
     /** Seguro de llamar desde cualquier hilo. */
@@ -71,9 +76,27 @@ public class SettingsWindow {
 
     /** Construye la ventana sin mostrarla (también la usan las capturas de pantalla de documentación). */
     Stage createStage() {
+        Scene scene = new Scene(buildRoot(null), 1040, 760);
+        scene.getStylesheets().add(getClass().getResource("/css/theme.css").toExternalForm());
+
+        Stage st = new Stage();
+        st.setTitle(messages.get("window.title"));
+        st.getIcons().addAll(BrandLogo.fxImage(32), BrandLogo.fxImage(64), BrandLogo.fxImage(256));
+        st.setMinWidth(940);
+        st.setMinHeight(660);
+        st.setScene(scene);
+        return st;
+    }
+
+    /**
+     * Todo el contenido de la ventana, en el idioma activo y con la primera página abierta.
+     *
+     * @param savedMessage texto de confirmación a mostrar un momento en el pie (o {@code null} al abrir)
+     */
+    private Parent buildRoot(String savedMessage) {
         BorderPane root = new BorderPane();
-        List<SettingsPage> pages = List.of(new CleaningPage(), new ShortcutsPage(),
-                new GeneralPage(autostart, mode -> applyTheme(root, mode)));
+        List<SettingsPage> pages = List.of(new CleaningPage(messages), new ShortcutsPage(messages),
+                new GeneralPage(messages, autostart, mode -> applyTheme(root, mode)));
         pages.forEach(p -> p.load(current.get()));
 
         StackPane pageHost = new StackPane();
@@ -82,19 +105,24 @@ public class SettingsWindow {
             pageHost.getChildren().add(page.view());
         }
 
-        Label status = new Label(HINT);
+        String hint = messages.get("footer.hint");
+        Label status = new Label(hint);
         status.getStyleClass().add("hint");
         PauseTransition resetStatus = new PauseTransition(Duration.seconds(3));
-        resetStatus.setOnFinished(e -> showStatus(status, HINT, "hint"));
+        resetStatus.setOnFinished(e -> showStatus(status, hint, "hint"));
+        if (savedMessage != null) {
+            showStatus(status, savedMessage, "footer-ok");
+            resetStatus.playFromStart();
+        }
 
-        Button restore = new Button("Restaurar");
+        Button restore = new Button(messages.get("button.restore"));
         restore.getStyleClass().add("button-secondary");
         restore.setOnAction(e -> {
             pages.forEach(p -> p.load(current.get()));
-            showStatus(status, HINT, "hint");
+            showStatus(status, hint, "hint");
         });
 
-        Button save = new Button("Guardar cambios");
+        Button save = new Button(messages.get("button.save"));
         save.getStyleClass().add("button-primary");
         save.setDefaultButton(true);
         save.setOnAction(e -> {
@@ -107,9 +135,12 @@ public class SettingsWindow {
                 return;
             }
             port.save(updated);
-            onSaved.accept(updated);
-            showStatus(status, "Cambios guardados ✓", "footer-ok");
-            resetStatus.playFromStart();
+            onSaved.accept(updated); // aquí la app cambia el idioma activo y refresca la bandeja
+
+            // Reconstruir: textos en el idioma nuevo y vuelta a la página principal (Limpieza).
+            Scene scene = save.getScene();
+            scene.setRoot(buildRoot(messages.get("status.saved")));
+            ((Stage) scene.getWindow()).setTitle(messages.get("window.title"));
         });
 
         Region spacer = new Region();
@@ -122,19 +153,9 @@ public class SettingsWindow {
         content.setCenter(pageHost);
         content.setBottom(footer);
 
-        root.setLeft(sidebar(pages, pageHost));
+        root.setLeft(sidebar(pages));
         root.setCenter(content);
-
-        Scene scene = new Scene(root, 1040, 760);
-        scene.getStylesheets().add(getClass().getResource("/css/theme.css").toExternalForm());
-
-        Stage st = new Stage();
-        st.setTitle("Text Refinery — Ajustes");
-        st.getIcons().addAll(BrandLogo.fxImage(32), BrandLogo.fxImage(64), BrandLogo.fxImage(256));
-        st.setMinWidth(940);
-        st.setMinHeight(660);
-        st.setScene(scene);
-        return st;
+        return root;
     }
 
     /** Activa o quita la clase "dark" en el nodo raíz; el CSS redefine la paleta con ella. */
@@ -151,7 +172,7 @@ public class SettingsWindow {
         label.getStyleClass().add(styleClass);
     }
 
-    private Node sidebar(List<SettingsPage> pages, StackPane pageHost) {
+    private Node sidebar(List<SettingsPage> pages) {
         ImageView mark = new ImageView(BrandLogo.fxImage(160)); // se dibuja grande y se reduce: queda nítido en pantallas HiDPI
         mark.setFitWidth(40);
         mark.setFitHeight(40);
@@ -159,7 +180,7 @@ public class SettingsWindow {
         mark.getStyleClass().add("brand-mark");
         Label name = new Label("Text Refinery");
         name.getStyleClass().add("brand-name");
-        Label version = new Label("v0.1 · local");
+        Label version = new Label(messages.get("window.version"));
         version.getStyleClass().add("brand-sub");
         HBox brand = new HBox(12, mark, new VBox(1, name, version));
         brand.setAlignment(Pos.CENTER_LEFT);
@@ -185,11 +206,11 @@ public class SettingsWindow {
 
         Circle dot = new Circle(4);
         dot.getStyleClass().add("status-dot");
-        Label cardTitle = new Label("Atajos activos");
+        Label cardTitle = new Label(messages.get("sidebar.status.title"));
         cardTitle.getStyleClass().add("sidebar-card-title");
         HBox cardHead = new HBox(8, dot, cardTitle);
         cardHead.setAlignment(Pos.CENTER_LEFT);
-        Label cardText = new Label("Todo se procesa en tu equipo. Nada sale a internet.");
+        Label cardText = new Label(messages.get("sidebar.status.text"));
         cardText.getStyleClass().add("sidebar-card-text");
         cardText.setWrapText(true);
         VBox card = new VBox(8, cardHead, cardText);

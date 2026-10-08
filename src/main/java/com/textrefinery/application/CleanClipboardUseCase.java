@@ -4,6 +4,7 @@ import com.textrefinery.domain.model.CleaningProfile;
 import com.textrefinery.domain.model.ProcessingContext;
 import com.textrefinery.domain.model.Settings;
 import com.textrefinery.domain.port.ClipboardPort;
+import com.textrefinery.domain.port.MessagesPort;
 import com.textrefinery.domain.port.NotifierPort;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -19,16 +20,18 @@ public class CleanClipboardUseCase {
     private final PipelineFactory pipelineFactory;
     private final NotifierPort notifier;
     private final Supplier<Settings> settings;
+    private final MessagesPort messages;
     // Solo en memoria (privacidad): se pierden al cerrar la app. Se accede desde hilos distintos.
     private volatile String lastOriginal;
     private volatile String lastWritten;
 
     public CleanClipboardUseCase(ClipboardPort clipboard, PipelineFactory pipelineFactory,
-                                 NotifierPort notifier, Supplier<Settings> settings) {
+                                 NotifierPort notifier, Supplier<Settings> settings, MessagesPort messages) {
         this.clipboard = clipboard;
         this.pipelineFactory = pipelineFactory;
         this.notifier = notifier;
         this.settings = settings;
+        this.messages = messages;
     }
 
     /** Lee, limpia y vuelve a escribir en el portapapeles. */
@@ -36,10 +39,10 @@ public class CleanClipboardUseCase {
         readAndClean().ifPresent(cleaned -> {
             if (clipboard.writeText(cleaned)) {
                 markWritten(cleaned);
-                notifier.info("Texto limpio ✓");
+                notifier.info(messages.get("notify.cleaned"));
             } else {
                 log.warn("No se pudo escribir en el portapapeles");
-                notifier.error("No se pudo escribir en el portapapeles (otra aplicación lo tiene bloqueado)");
+                notifier.error(messages.get("notify.writeFailed"));
             }
         });
     }
@@ -54,12 +57,12 @@ public class CleanClipboardUseCase {
         raw = raw.or(clipboard::readText);
 
         if (raw.isEmpty() || raw.get().isBlank()) {
-            notifier.error("El portapapeles no contiene texto");
+            notifier.error(messages.get("notify.emptyClipboard"));
             return Optional.empty();
         }
         if (raw.get().length() > s.maxClipboardChars) {
             log.warn("Contenido ignorado: {} caracteres superan el límite de {}", raw.get().length(), s.maxClipboardChars);
-            notifier.error("El texto es demasiado largo (máx. " + s.maxClipboardChars + " caracteres)");
+            notifier.error(messages.get("notify.tooLong", s.maxClipboardChars));
             return Optional.empty();
         }
         rememberOriginal(raw.get(), s);
@@ -89,14 +92,14 @@ public class CleanClipboardUseCase {
     public void restoreOriginal() {
         String original = lastOriginal;
         if (original == null) {
-            notifier.error("No hay ningún texto anterior que restaurar");
+            notifier.error(messages.get("notify.nothingToRestore"));
             return;
         }
         if (clipboard.writeText(original)) {
             lastWritten = original;
-            notifier.info("Texto original restaurado ✓");
+            notifier.info(messages.get("notify.restored"));
         } else {
-            notifier.error("No se pudo escribir en el portapapeles (otra aplicación lo tiene bloqueado)");
+            notifier.error(messages.get("notify.writeFailed"));
         }
     }
 

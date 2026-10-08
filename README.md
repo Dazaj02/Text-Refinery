@@ -32,6 +32,12 @@ Tres páginas: **Limpieza**, **Atajos e IA** y **General** (arranque con el sist
 | ![Limpieza](docs/img/limpieza.png) | ![Atajos e IA](docs/img/atajos-ia.png) |
 | **General** | **Tema oscuro** |
 | ![General](docs/img/general.png) | ![Limpieza en oscuro](docs/img/limpieza-oscuro.png) |
+| **En inglés: Cleaning** | **En inglés: General** |
+| ![Cleaning](docs/img/cleaning-en.png) | ![General en inglés](docs/img/general-en.png) |
+
+**Idioma de la aplicación:** menús, ventanas y avisos están en español o inglés (*General → Idioma*). Se aplica al guardar, sin
+reiniciar, y al guardar la ventana vuelve a la página principal. Por defecto sigue el idioma del sistema. Es independiente del
+*idioma del texto*, que solo decide en qué idioma se pide el trabajo a la IA.
 
 Detalles del diseño y de la paleta en [docs/ui-design.md](docs/ui-design.md).
 
@@ -84,6 +90,23 @@ doble clic y no hay consola. Solo contiene eventos, longitudes de texto y tipos 
 | El atajo no hace nada | Ver registro: ¿dice «No se pudo activar el atajo global»? Cambia la combinación en *Ajustes → Atajos e IA* |
 | «IA no disponible» | *Atajos e IA → Probar conexión*; ¿está Ollama corriendo y el modelo descargado? |
 | No arranca con el sistema | *General → Iniciar con el sistema*; no está disponible al ejecutar desde el código fuente |
+| Windows lo muestra como «OpenJDK Platform binary» | Es lo normal con `java -jar`: el proceso es `javaw.exe`. Ejecuta el paquete (ver abajo) |
+
+### ¿Por qué aparece «OpenJDK Platform binary»?
+
+Con `java -jar …` el programa que corre es `javaw.exe`, y Windows usa **su** nombre, icono y descripción en el Administrador de
+tareas y en los avisos. Opciones, de mejor a peor:
+
+1. **Ejecutar el paquete** (`scripts\package.ps1 -Type app-image`, o el instalador): genera `Text Refinery.exe`, con su nombre, icono y
+   descripción propios, y trae su propio Java. Es la solución real y es lo que se entrega.
+2. **Acceso directo con el logo** apuntando a `javaw.exe -jar …`: cambia el icono del acceso, pero el proceso y los avisos
+   siguen diciendo OpenJDK.
+3. **Envoltorio `.exe`** (Launch4j o similar) que lanza el jar: da un `.exe` con nombre propio, pero añade otra herramienta y el
+   proceso real sigue siendo Java; el paquete de `jpackage` ya resuelve lo mismo.
+4. **Identidad propia en los avisos** (AppUserModelID mediante un acceso directo en el menú Inicio): requiere código nativo para un
+   cambio solo visual; el instalador (`-Type exe`) ya registra el programa en el menú Inicio.
+
+Para desarrollo (ejecutar desde código) no hay forma de evitarlo: es el nombre del ejecutable de Java.
 
 ## Privacidad
 

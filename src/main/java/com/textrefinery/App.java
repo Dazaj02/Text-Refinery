@@ -7,6 +7,7 @@ import com.textrefinery.application.RefineWithAiUseCase;
 import com.textrefinery.domain.model.Settings;
 import com.textrefinery.domain.port.AutostartException;
 import com.textrefinery.domain.port.AutostartPort;
+import com.textrefinery.domain.port.MessagesPort;
 import com.textrefinery.domain.port.NotifierPort;
 import com.textrefinery.infrastructure.ai.OllamaAiProvider;
 import com.textrefinery.infrastructure.autostart.SystemAutostart;
@@ -15,6 +16,7 @@ import com.textrefinery.infrastructure.config.AppPaths;
 import com.textrefinery.infrastructure.config.JsonSettingsAdapter;
 import com.textrefinery.infrastructure.hotkey.GlobalHotkeyManager;
 import com.textrefinery.infrastructure.hotkey.Hotkey;
+import com.textrefinery.infrastructure.i18n.ResourceBundleMessages;
 import com.textrefinery.infrastructure.lock.SingleInstanceLock;
 import com.textrefinery.infrastructure.logging.FileLogging;
 import com.textrefinery.infrastructure.notify.LogNotifier;
@@ -76,13 +78,17 @@ public final class App {
         Platform.startup(() -> { });
         Platform.setImplicitExit(false);
 
-        TrayController tray = new TrayController();
+        // Idioma de la interfaz: todos los textos que ve el usuario salen de aquí y cambian en caliente.
+        ResourceBundleMessages messages = new ResourceBundleMessages(settings.get().appLanguage);
+
+        TrayController tray = new TrayController(messages);
         NotifierPort notifier = tray.icon().<NotifierPort>map(TrayNotifier::new).orElseGet(LogNotifier::new);
 
         AwtClipboardAdapter clipboard = new AwtClipboardAdapter();
-        CleanClipboardUseCase clean = new CleanClipboardUseCase(clipboard, new PipelineFactory(), notifier, settings::get);
+        CleanClipboardUseCase clean = new CleanClipboardUseCase(
+                clipboard, new PipelineFactory(), notifier, settings::get, messages);
         RefineWithAiUseCase refine = new RefineWithAiUseCase(
-                clean, new OllamaAiProvider(settings::get), clipboard, notifier, settings::get, executor);
+                clean, new OllamaAiProvider(settings::get), clipboard, notifier, settings::get, executor, messages);
 
         GlobalHotkeyManager hotkeys = new GlobalHotkeyManager(
                 () -> executor.submit(() -> {
@@ -110,9 +116,11 @@ public final class App {
         SettingsWindow settingsWindow = new SettingsWindow(settingsAdapter, settings::get, updated -> {
             settings.set(updated);
             applyHotkeys(hotkeys, updated);
+            messages.setLanguage(updated.appLanguage);
+            tray.refreshLanguage();
             tray.selectProfile(updated.defaultProfile);
-            executor.submit(() -> syncAutostart(autostart, updated.launchAtLogin, notifier));
-        }, autostart);
+            executor.submit(() -> syncAutostart(autostart, updated.launchAtLogin, notifier, messages));
+        }, autostart, messages);
 
         tray.install(settings.get(), new TrayController.Actions(
                 () -> executor.submit(clean::execute),
@@ -126,7 +134,7 @@ public final class App {
                 },
                 paused::set,
                 settingsWindow::show,
-                () -> executor.submit(() -> openLog(notifier)),
+                () -> executor.submit(() -> openLog(notifier, messages)),
                 exit));
 
         try {
@@ -134,8 +142,8 @@ public final class App {
         } catch (NativeHookException | UnsatisfiedLinkError | RuntimeException e) {
             // La app sigue viva: el menú de la bandeja y la ventana de ajustes funcionan sin atajo global.
             log.error("No se pudo activar el atajo global: {}", e.getClass().getSimpleName());
-            notifier.error("No se pudo activar el atajo global. "
-                    + PlatformInfo.hotkeyProblemHint(PlatformInfo.current(), PlatformInfo.isWayland()));
+            notifier.error(messages.get("notify.hotkeyFailed", messages.get(
+                    PlatformInfo.hotkeyProblemKey(PlatformInfo.current(), PlatformInfo.isWayland()))));
         }
 
         if (tray.icon().isEmpty()) {
@@ -150,7 +158,7 @@ public final class App {
     }
 
     /** Abre app.log con el programa predeterminado del sistema (o su carpeta si no hay ninguno asociado). */
-    private static void openLog(NotifierPort notifier) {
+    private static void openLog(NotifierPort notifier, MessagesPort messages) {
         Path file = AppPaths.configDir().resolve("app.log");
         try {
             Desktop desktop = Desktop.getDesktop();
@@ -161,12 +169,12 @@ public final class App {
             }
         } catch (IOException | RuntimeException e) {
             log.warn("No se pudo abrir el registro: {}", e.getClass().getSimpleName());
-            notifier.error("No se pudo abrir el registro: " + file);
+            notifier.error(messages.get("notify.openLogFailed", file));
         }
     }
 
     /** Lleva el arranque con el sistema al estado pedido; si el sistema lo rechaza, avisa y la app sigue. */
-    private static void syncAutostart(AutostartPort autostart, boolean wanted, NotifierPort notifier) {
+    private static void syncAutostart(AutostartPort autostart, boolean wanted, NotifierPort notifier, MessagesPort messages) {
         try {
             if (autostart.isSupported() && autostart.isEnabled() != wanted) {
                 autostart.setEnabled(wanted);
@@ -174,7 +182,7 @@ public final class App {
             }
         } catch (AutostartException e) {
             log.warn("No se pudo cambiar el arranque con el sistema: {}", e.getMessage());
-            notifier.error("No se pudo cambiar el arranque con el sistema.");
+            notifier.error(messages.get("notify.autostartFailed"));
         }
     }
 

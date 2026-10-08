@@ -2,6 +2,8 @@ package com.textrefinery.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.textrefinery.domain.model.Language;
+import com.textrefinery.infrastructure.i18n.ResourceBundleMessages;
 import com.textrefinery.infrastructure.platform.PlatformInfo;
 import com.textrefinery.infrastructure.platform.PlatformInfo.Os;
 import com.textrefinery.ui.components.BrandLogo;
@@ -29,11 +31,19 @@ class PlatformAndLogoTests {
     }
 
     @Test
-    void cadaSistemaTieneUnaPistaParaElAtajo() {
-        assertThat(PlatformInfo.hotkeyProblemHint(Os.MAC, false)).contains("Accesibilidad");
-        assertThat(PlatformInfo.hotkeyProblemHint(Os.LINUX, true)).contains("Wayland");
-        assertThat(PlatformInfo.hotkeyProblemHint(Os.LINUX, false)).contains("X11");
-        assertThat(PlatformInfo.hotkeyProblemHint(Os.WINDOWS, false)).isNotBlank();
+    void cadaSistemaTieneUnaPistaParaElAtajoEnAmbosIdiomas() {
+        for (Language language : Language.values()) {
+            ResourceBundleMessages messages = new ResourceBundleMessages(language);
+            for (Os os : Os.values()) {
+                for (boolean wayland : new boolean[]{false, true}) {
+                    String key = PlatformInfo.hotkeyProblemKey(os, wayland);
+                    assertThat(messages.get(key)).as(language + "/" + key).isNotBlank().doesNotStartWith("!");
+                }
+            }
+        }
+        assertThat(PlatformInfo.hotkeyProblemKey(Os.MAC, false)).isEqualTo("hint.hotkey.mac");
+        assertThat(PlatformInfo.hotkeyProblemKey(Os.LINUX, true)).isEqualTo("hint.hotkey.linuxWayland");
+        assertThat(PlatformInfo.hotkeyProblemKey(Os.LINUX, false)).isEqualTo("hint.hotkey.linuxX11");
     }
 
     @Test

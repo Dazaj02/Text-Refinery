@@ -1,14 +1,16 @@
 package com.textrefinery.ui.settings;
 
+import com.textrefinery.domain.model.Language;
 import com.textrefinery.domain.model.Settings;
-import com.textrefinery.domain.model.TextLanguage;
 import com.textrefinery.domain.model.ThemeMode;
 import com.textrefinery.domain.port.AutostartPort;
+import com.textrefinery.domain.port.MessagesPort;
 import com.textrefinery.ui.components.Icons;
 import com.textrefinery.ui.components.ToggleSwitch;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -22,75 +24,61 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
-/** Ajustes generales de la aplicación: arranque con el sistema, apariencia e idioma. */
+/** Ajustes generales: arranque con el sistema, apariencia e idiomas (de la aplicación y del texto que se pide a la IA). */
 final class GeneralPage implements SettingsPage {
 
+    private final MessagesPort messages;
     private final AutostartPort autostart;
-    private final Consumer<ThemeMode> onThemeChosen;
     private final ToggleGroup themeGroup = new ToggleGroup();
     private final Map<ThemeMode, ToggleButton> themeButtons = new EnumMap<>(ThemeMode.class);
-    private final ToggleGroup languageGroup = new ToggleGroup();
-    private final Map<TextLanguage, ToggleButton> languageButtons = new EnumMap<>(TextLanguage.class);
+    private final ToggleGroup appLanguageGroup = new ToggleGroup();
+    private final Map<Language, ToggleButton> appLanguageButtons = new EnumMap<>(Language.class);
+    private final ToggleGroup textLanguageGroup = new ToggleGroup();
+    private final Map<Language, ToggleButton> textLanguageButtons = new EnumMap<>(Language.class);
     private final ToggleSwitch launchAtLogin = new ToggleSwitch();
     private final Label launchHint = new Label();
     private final VBox sections = new VBox(16);
     private final ScrollPane root = new ScrollPane();
 
-    GeneralPage(AutostartPort autostart, Consumer<ThemeMode> onThemeChosen) {
+    GeneralPage(MessagesPort messages, AutostartPort autostart, Consumer<ThemeMode> onThemeChosen) {
+        this.messages = messages;
         this.autostart = autostart;
-        this.onThemeChosen = onThemeChosen;
 
-        Label title = new Label("General");
+        Label title = new Label(messages.get("general.title"));
         title.getStyleClass().add("page-title");
-        Label sub = new Label("Comportamiento de la aplicación en tu equipo.");
+        Label sub = new Label(messages.get("general.subtitle"));
         sub.getStyleClass().add("page-subtitle");
 
-        launchAtLogin.setAccessibleText("Iniciar con el sistema");
+        launchAtLogin.setAccessibleText(messages.get("general.startup.row"));
         launchHint.getStyleClass().add("processor-hint");
         launchHint.setWrapText(true);
-        sections.getChildren().add(card("Inicio", row("Iniciar con el sistema", launchHint, launchAtLogin)));
+        sections.getChildren().add(card(messages.get("general.startup.card"),
+                row(messages.get("general.startup.row"), launchHint, launchAtLogin)));
 
-        Label themeHint = new Label("Se aplica al instante; se guarda con «Guardar cambios».");
-        themeHint.getStyleClass().add("processor-hint");
-        HBox themeSegments = new HBox(4);
-        themeSegments.getStyleClass().add("segment-group");
-        for (ThemeMode mode : ThemeMode.values()) {
-            ToggleButton b = new ToggleButton(mode.label());
-            b.getStyleClass().add("segment");
-            b.setToggleGroup(themeGroup);
-            b.setMinWidth(90);
-            themeButtons.put(mode, b);
-            themeSegments.getChildren().add(b);
-        }
+        Label themeHint = hint(messages.get("general.theme.hint"));
+        HBox themeSegments = segments(ThemeMode.values(), themeGroup, themeButtons, m -> messages.get("theme." + m.name()));
         themeGroup.selectedToggleProperty().addListener((obs, was, now) -> {
             if (now == null) { // siempre debe haber un tema elegido
                 themeGroup.selectToggle(was);
                 return;
             }
-            onThemeChosen.accept(selectedTheme());
+            onThemeChosen.accept(selected(themeGroup, themeButtons, ThemeMode.LIGHT));
         });
-        sections.getChildren().add(card("Apariencia", row("Tema", themeHint, themeSegments)));
+        sections.getChildren().add(card(messages.get("general.appearance.card"),
+                row(messages.get("general.theme.row"), themeHint, themeSegments)));
 
-        Label languageHint = new Label("La limpieza funciona igual en ambos idiomas; esto elige en cuál se pide el trabajo a la IA.");
-        languageHint.getStyleClass().add("processor-hint");
-        languageHint.setWrapText(true);
-        languageHint.setMaxWidth(430);
-        HBox languageSegments = new HBox(4);
-        languageSegments.getStyleClass().add("segment-group");
-        for (TextLanguage language : TextLanguage.values()) {
-            ToggleButton b = new ToggleButton(language.label());
-            b.getStyleClass().add("segment");
-            b.setToggleGroup(languageGroup);
-            b.setMinWidth(90);
-            languageButtons.put(language, b);
-            languageSegments.getChildren().add(b);
-        }
-        languageGroup.selectedToggleProperty().addListener((obs, was, now) -> {
-            if (now == null) {
-                languageGroup.selectToggle(was);
-            }
-        });
-        sections.getChildren().add(card("Idioma", row("Idioma del texto", languageHint, languageSegments)));
+        Label appLanguageHint = hint(messages.get("general.appLanguage.hint"));
+        HBox appLanguageSegments = segments(Language.values(), appLanguageGroup, appLanguageButtons, Language::label);
+        keepOneSelected(appLanguageGroup);
+
+        Label textLanguageHint = hint(messages.get("general.textLanguage.hint"));
+        textLanguageHint.setMaxWidth(430);
+        HBox textLanguageSegments = segments(Language.values(), textLanguageGroup, textLanguageButtons, Language::label);
+        keepOneSelected(textLanguageGroup);
+
+        sections.getChildren().add(card(messages.get("general.language.card"),
+                row(messages.get("general.appLanguage.row"), appLanguageHint, appLanguageSegments),
+                row(messages.get("general.textLanguage.row"), textLanguageHint, textLanguageSegments)));
 
         VBox content = new VBox(18, new VBox(4, title, sub), sections);
         content.setPadding(new Insets(30, 36, 8, 36));
@@ -102,7 +90,7 @@ final class GeneralPage implements SettingsPage {
 
     @Override
     public String title() {
-        return "General";
+        return messages.get("nav.general");
     }
 
     @Override
@@ -121,40 +109,61 @@ final class GeneralPage implements SettingsPage {
         launchAtLogin.setDisable(!supported);
         launchAtLogin.setSelected(supported && autostart.isEnabled()); // el estado real lo manda el sistema, no el JSON
         themeGroup.selectToggle(themeButtons.get(s.theme));
-        languageGroup.selectToggle(languageButtons.get(s.textLanguage));
-        launchHint.setText(supported
-                ? "Abre Text Refinery en la bandeja al iniciar sesión."
-                : "No disponible al ejecutar desde el código fuente; usa el instalador o el jar.");
+        appLanguageGroup.selectToggle(appLanguageButtons.get(s.appLanguage));
+        textLanguageGroup.selectToggle(textLanguageButtons.get(s.textLanguage));
+        launchHint.setText(messages.get(supported ? "general.startup.hint.supported" : "general.startup.hint.unsupported"));
     }
 
     @Override
     public void apply(Settings target) {
         target.launchAtLogin = launchAtLogin.isSelected();
-        target.theme = selectedTheme();
-        target.textLanguage = selectedLanguage();
-    }
-
-    private TextLanguage selectedLanguage() {
-        Toggle selected = languageGroup.getSelectedToggle();
-        for (Map.Entry<TextLanguage, ToggleButton> e : languageButtons.entrySet()) {
-            if (e.getValue() == selected) {
-                return e.getKey();
-            }
-        }
-        return TextLanguage.ES;
-    }
-
-    private ThemeMode selectedTheme() {
-        Toggle selected = themeGroup.getSelectedToggle();
-        for (Map.Entry<ThemeMode, ToggleButton> e : themeButtons.entrySet()) {
-            if (e.getValue() == selected) {
-                return e.getKey();
-            }
-        }
-        return ThemeMode.LIGHT;
+        target.theme = selected(themeGroup, themeButtons, ThemeMode.LIGHT);
+        target.appLanguage = selected(appLanguageGroup, appLanguageButtons, Language.ES);
+        target.textLanguage = selected(textLanguageGroup, textLanguageButtons, Language.ES);
     }
 
     // ---------------------------------------------------------------- piezas reutilizables
+
+    private static Label hint(String text) {
+        Label label = new Label(text);
+        label.getStyleClass().add("processor-hint");
+        label.setWrapText(true);
+        return label;
+    }
+
+    /** Grupo de botones segmentados con un botón por cada valor de un enum. */
+    private static <E extends Enum<E>> HBox segments(E[] values, ToggleGroup group, Map<E, ToggleButton> buttons,
+                                                     Function<E, String> text) {
+        HBox box = new HBox(4);
+        box.getStyleClass().add("segment-group");
+        for (E value : values) {
+            ToggleButton b = new ToggleButton(text.apply(value));
+            b.getStyleClass().add("segment");
+            b.setToggleGroup(group);
+            b.setMinWidth(90);
+            buttons.put(value, b);
+            box.getChildren().add(b);
+        }
+        return box;
+    }
+
+    private static void keepOneSelected(ToggleGroup group) {
+        group.selectedToggleProperty().addListener((obs, was, now) -> {
+            if (now == null) {
+                group.selectToggle(was);
+            }
+        });
+    }
+
+    private static <E extends Enum<E>> E selected(ToggleGroup group, Map<E, ToggleButton> buttons, E fallback) {
+        Toggle selected = group.getSelectedToggle();
+        for (Map.Entry<E, ToggleButton> e : buttons.entrySet()) {
+            if (e.getValue() == selected) {
+                return e.getKey();
+            }
+        }
+        return fallback;
+    }
 
     /** Tarjeta con título y filas de ajustes. */
     static VBox card(String heading, Node... rows) {

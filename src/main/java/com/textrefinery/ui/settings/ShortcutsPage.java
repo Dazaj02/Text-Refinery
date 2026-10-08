@@ -2,6 +2,7 @@ package com.textrefinery.ui.settings;
 
 import com.textrefinery.domain.model.AiMode;
 import com.textrefinery.domain.model.Settings;
+import com.textrefinery.domain.port.MessagesPort;
 import com.textrefinery.infrastructure.ai.OllamaAiProvider;
 import com.textrefinery.infrastructure.hotkey.Hotkey;
 import com.textrefinery.ui.components.Icons;
@@ -32,20 +33,14 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Circle;
 
 /** Atajos globales y conexión con el motor de IA (Ollama). */
 final class ShortcutsPage implements SettingsPage {
 
-    private static final Map<AiMode, String> MODE_HINTS = new EnumMap<>(AiMode.class);
-
-    static {
-        MODE_HINTS.put(AiMode.SUMMARIZE, "Reduce el texto a un párrafo fiel al original.");
-        MODE_HINTS.put(AiMode.GRAMMAR, "Ortografía, puntuación y concordancia sin cambiar el sentido.");
-        MODE_HINTS.put(AiMode.CITE, "Reescribe de forma formal sin inventar datos ni referencias.");
-    }
-
+    private final MessagesPort messages;
     private final StringProperty cleanKey = new SimpleStringProperty("Ctrl+Shift+Y");
     private final StringProperty aiKey = new SimpleStringProperty("Ctrl+Shift+G");
     private final ToggleGroup modeGroup = new ToggleGroup();
@@ -61,10 +56,12 @@ final class ShortcutsPage implements SettingsPage {
     private final ScrollPane root = new ScrollPane();
     private boolean checkedOnce;
 
-    ShortcutsPage() {
-        Label title = new Label("Atajos e IA");
+    ShortcutsPage(MessagesPort messages) {
+        this.messages = messages;
+
+        Label title = new Label(messages.get("shortcuts.title"));
         title.getStyleClass().add("page-title");
-        Label sub = new Label("Un atajo rápido para limpiar y otro, opcional, que además usa IA local.");
+        Label sub = new Label(messages.get("shortcuts.subtitle"));
         sub.getStyleClass().add("page-subtitle");
 
         GridPane shortcuts = new GridPane();
@@ -74,10 +71,10 @@ final class ShortcutsPage implements SettingsPage {
             col.setPercentWidth(50);
             shortcuts.getColumnConstraints().add(col);
         }
-        shortcuts.add(shortcutCard("Limpiar portapapeles", "Instantáneo", "chip-green", cleanKey,
-                "Funciona aunque Ollama no esté encendido."), 0, 0);
-        shortcuts.add(shortcutCard("Limpiar y refinar con IA", "Opcional", "chip-red", aiKey,
-                "Si la IA no responde, se aplica solo la limpieza."), 1, 0);
+        shortcuts.add(shortcutCard(messages.get("shortcuts.clean.title"), messages.get("shortcuts.clean.badge"),
+                "chip-green", cleanKey, messages.get("shortcuts.clean.note")), 0, 0);
+        shortcuts.add(shortcutCard(messages.get("shortcuts.ai.title"), messages.get("shortcuts.ai.badge"),
+                "chip-red", aiKey, messages.get("shortcuts.ai.note")), 1, 0);
 
         captureError.getStyleClass().add("footer-error");
         captureError.setManaged(false);
@@ -95,13 +92,13 @@ final class ShortcutsPage implements SettingsPage {
                 modeGroup.selectToggle(was);
                 return;
             }
-            modeHint.setText(MODE_HINTS.get(selectedMode()));
+            modeHint.setText(messages.get("ai.mode." + selectedMode().name() + ".hint"));
         });
     }
 
     @Override
     public String title() {
-        return "Atajos e IA";
+        return messages.get("nav.shortcuts");
     }
 
     @Override
@@ -130,25 +127,25 @@ final class ShortcutsPage implements SettingsPage {
 
     @Override
     public void apply(Settings target) {
-        Hotkey clean = Hotkey.parse(cleanKey.get());
-        Hotkey ai = Hotkey.parse(aiKey.get());
+        Hotkey clean = parse(cleanKey.get());
+        Hotkey ai = parse(aiKey.get());
         if (clean.equals(ai)) {
-            throw new IllegalArgumentException("Los dos atajos no pueden ser iguales.");
+            throw new IllegalArgumentException(messages.get("error.hotkey.same"));
         }
         if (model.getText().isBlank()) {
-            throw new IllegalArgumentException("Escribe el nombre del modelo de Ollama.");
+            throw new IllegalArgumentException(messages.get("error.model.empty"));
         }
         if (url.getText().isBlank()) {
-            throw new IllegalArgumentException("Escribe la dirección de Ollama.");
+            throw new IllegalArgumentException(messages.get("error.url.empty"));
         }
         int seconds;
         try {
             seconds = Integer.parseInt(timeout.getText().strip());
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("El tiempo máximo debe ser un número entre 5 y 600.");
+            throw new IllegalArgumentException(messages.get("error.timeout"));
         }
         if (seconds < 5 || seconds > 600) {
-            throw new IllegalArgumentException("El tiempo máximo debe ser un número entre 5 y 600.");
+            throw new IllegalArgumentException(messages.get("error.timeout"));
         }
         target.cleanHotkey = cleanKey.get();
         target.aiHotkey = aiKey.get();
@@ -156,6 +153,15 @@ final class ShortcutsPage implements SettingsPage {
         target.aiModel = model.getText().strip();
         target.ollamaUrl = url.getText().strip();
         target.aiTimeoutSeconds = seconds;
+    }
+
+    /** Hotkey.parse lanza mensajes técnicos; al usuario se le muestra el texto traducido. */
+    private Hotkey parse(String combo) {
+        try {
+            return Hotkey.parse(combo);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(messages.get("error.hotkey.invalid", combo));
+        }
     }
 
     // ---------------------------------------------------------------- atajos
@@ -176,7 +182,7 @@ final class ShortcutsPage implements SettingsPage {
         key.addListener((obs, was, now) -> render.run());
         render.run();
 
-        Button change = new Button("Cambiar");
+        Button change = new Button(messages.get("shortcuts.change"));
         change.getStyleClass().add("button-outline");
         change.setOnAction(e -> capture(key, change, caps));
         Region grow = new Region();
@@ -216,9 +222,9 @@ final class ShortcutsPage implements SettingsPage {
     private void capture(StringProperty target, Button button, HBox caps) {
         Scene scene = button.getScene();
         String original = button.getText();
-        button.setText("Pulsa la combinación…");
+        button.setText(messages.get("shortcuts.capturing.button"));
         caps.getChildren().clear();
-        Label waiting = new Label("Esperando teclas…");
+        Label waiting = new Label(messages.get("shortcuts.capturing.label"));
         waiting.getStyleClass().add("keycap-capturing");
         caps.getChildren().add(waiting);
         hideCaptureError();
@@ -240,12 +246,12 @@ final class ShortcutsPage implements SettingsPage {
                 return;
             }
             if (!(e.isControlDown() || e.isAltDown() || e.isShiftDown() || e.isMetaDown())) {
-                showCaptureError("Añade Ctrl, Shift, Alt o Cmd al atajo.");
+                showCaptureError(messages.get("shortcuts.capture.needModifier"));
                 return;
             }
             String key = code.getName().toUpperCase(Locale.ROOT);
             if (!key.matches("[A-Z0-9]|F\\d{1,2}")) {
-                showCaptureError("Usa una letra, un número o una tecla F.");
+                showCaptureError(messages.get("shortcuts.capture.badKey"));
                 return;
             }
             List<String> parts = new ArrayList<>();
@@ -284,14 +290,14 @@ final class ShortcutsPage implements SettingsPage {
     // ---------------------------------------------------------------- IA
 
     private Node aiCard() {
-        Label title = new Label("Motor de IA · Ollama");
+        Label title = new Label(messages.get("ai.title"));
         title.getStyleClass().add("card-title");
         connectionChip.getChildren().addAll(connectionDot, connection);
         connectionChip.setAlignment(Pos.CENTER_LEFT);
         connectionChip.setMaxHeight(Region.USE_PREF_SIZE); // si no, el HBox del encabezado la estira
         connectionChip.getStyleClass().addAll("chip", "chip-muted");
-        setConnection("Sin comprobar", null);
-        Button test = new Button("Probar conexión");
+        setConnection(messages.get("ai.status.unchecked"), null);
+        Button test = new Button(messages.get("ai.test"));
         test.getStyleClass().add("button-secondary");
         test.setOnAction(e -> testConnection());
         Region spacer = new Region();
@@ -299,12 +305,12 @@ final class ShortcutsPage implements SettingsPage {
         HBox header = new HBox(10, title, connectionChip, spacer, test);
         header.getStyleClass().add("card-header");
 
-        Label modeLabel = new Label("QUÉ HACER CON EL TEXTO");
+        Label modeLabel = new Label(messages.get("ai.modeLabel"));
         modeLabel.getStyleClass().add("section-label");
         HBox segments = new HBox(4);
         segments.getStyleClass().add("segment-group");
         for (AiMode mode : AiMode.values()) {
-            ToggleButton b = new ToggleButton(mode.label());
+            ToggleButton b = new ToggleButton(messages.get("ai.mode." + mode.name()));
             b.getStyleClass().add("segment");
             b.setToggleGroup(modeGroup);
             b.setMaxWidth(Double.MAX_VALUE);
@@ -322,16 +328,16 @@ final class ShortcutsPage implements SettingsPage {
             col.setPercentWidth(w);
             fields.getColumnConstraints().add(col);
         }
-        fields.add(field("Modelo", model), 0, 0);
-        fields.add(field("Dirección", url), 1, 0);
-        fields.add(field("Tiempo máx. (s)", timeout), 2, 0);
+        fields.add(field(messages.get("ai.field.model"), model), 0, 0);
+        fields.add(field(messages.get("ai.field.url"), url), 1, 0);
+        fields.add(field(messages.get("ai.field.timeout"), timeout), 2, 0);
 
         Node lock = Icons.outline(Icons.LOCK, 20);
         lock.getStyleClass().add("note-icon");
-        Label noteText = new Label("100 % local. El contenido del portapapeles nunca se guarda en registros ni sale de tu equipo.");
+        Label noteText = new Label(messages.get("ai.privacy"));
         noteText.getStyleClass().add("note-text");
         noteText.setWrapText(true);
-        HBox note = new HBox(12, new javafx.scene.layout.StackPane(lock), noteText);
+        HBox note = new HBox(12, new StackPane(lock), noteText);
         note.getStyleClass().add("note-box");
 
         VBox body = new VBox(18, new VBox(8, modeLabel, segments, modeHint), fields, note);
@@ -377,7 +383,7 @@ final class ShortcutsPage implements SettingsPage {
 
     /** Comprueba la dirección escrita (aunque aún no esté guardada), sin bloquear la ventana. */
     private void testConnection() {
-        setConnection("Comprobando…", null);
+        setConnection(messages.get("ai.status.checking"), null);
         Settings probe = new Settings();
         probe.ollamaUrl = url.getText().isBlank() ? "http://localhost:11434" : url.getText().strip();
         Thread t = new Thread(() -> {
@@ -388,7 +394,8 @@ final class ShortcutsPage implements SettingsPage {
                 ok = false;
             }
             boolean result = ok;
-            Platform.runLater(() -> setConnection(result ? "Conectado" : "Sin conexión", result));
+            Platform.runLater(() -> setConnection(
+                    messages.get(result ? "ai.status.connected" : "ai.status.disconnected"), result));
         }, "ollama-check");
         t.setDaemon(true);
         t.start();

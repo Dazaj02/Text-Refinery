@@ -4,6 +4,7 @@ import com.textrefinery.domain.model.AiMode;
 import com.textrefinery.domain.model.Settings;
 import com.textrefinery.domain.port.AiProviderPort;
 import com.textrefinery.domain.port.ClipboardPort;
+import com.textrefinery.domain.port.MessagesPort;
 import com.textrefinery.domain.port.NotifierPort;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -24,15 +25,18 @@ public class RefineWithAiUseCase {
     private final NotifierPort notifier;
     private final Supplier<Settings> settings;
     private final Executor executor;
+    private final MessagesPort messages;
 
     public RefineWithAiUseCase(CleanClipboardUseCase cleaner, AiProviderPort ai, ClipboardPort clipboard,
-                               NotifierPort notifier, Supplier<Settings> settings, Executor executor) {
+                               NotifierPort notifier, Supplier<Settings> settings, Executor executor,
+                               MessagesPort messages) {
         this.cleaner = cleaner;
         this.ai = ai;
         this.clipboard = clipboard;
         this.notifier = notifier;
         this.settings = settings;
         this.executor = executor;
+        this.messages = messages;
     }
 
     public CompletableFuture<Void> execute(AiMode mode) {
@@ -41,7 +45,7 @@ public class RefineWithAiUseCase {
             return CompletableFuture.completedFuture(null);
         }
         String text = cleaned.get();
-        notifier.info("Procesando con IA…");
+        notifier.info(messages.get("notify.aiProcessing"));
 
         return CompletableFuture.supplyAsync(() -> ai.refine(text, mode), executor)
                 .orTimeout(settings.get().aiTimeoutSeconds, TimeUnit.SECONDS)
@@ -52,7 +56,7 @@ public class RefineWithAiUseCase {
                         ok = clipboard.writeText(result);
                         if (ok) {
                             cleaner.markWritten(result);
-                            notifier.info("Texto refinado ✓");
+                            notifier.info(messages.get("notify.aiDone"));
                         }
                     } else {
                         // Degradación elegante: nunca se registra el contenido, solo el tipo de error.
@@ -60,12 +64,12 @@ public class RefineWithAiUseCase {
                         ok = clipboard.writeText(text);
                         if (ok) {
                             cleaner.markWritten(text);
-                            notifier.error("IA no disponible: se aplicó solo la limpieza");
+                            notifier.error(messages.get("notify.aiUnavailable"));
                         }
                     }
                     if (!ok) {
                         log.warn("No se pudo escribir en el portapapeles");
-                        notifier.error("No se pudo escribir en el portapapeles (otra aplicación lo tiene bloqueado)");
+                        notifier.error(messages.get("notify.writeFailed"));
                     }
                     return null;
                 });

@@ -37,15 +37,13 @@ public final class PlatformInfo {
         return isWayland(System.getenv("XDG_SESSION_TYPE"), System.getenv("WAYLAND_DISPLAY"));
     }
 
-    /** Mensaje para el usuario cuando el atajo global no se pudo activar. */
-    public static String hotkeyProblemHint(Os os, boolean wayland) {
+    /** Clave del mensaje (i18n/messages_*.properties) con la pista para el usuario cuando el atajo global no se activa. */
+    public static String hotkeyProblemKey(Os os, boolean wayland) {
         return switch (os) {
-            case MAC -> "Concede el permiso de Accesibilidad en Ajustes del Sistema › Privacidad y seguridad.";
-            case LINUX -> wayland
-                    ? "Wayland no permite atajos globales; inicia sesión con X11 o usa el menú de la bandeja."
-                    : "No se pudo registrar el atajo; comprueba que se ejecuta bajo X11.";
-            case WINDOWS -> "Otra aplicación puede estar usando el atajo; cámbialo en Ajustes.";
-            case OTHER -> "Este sistema no admite atajos globales; usa el menú de la bandeja.";
+            case MAC -> "hint.hotkey.mac";
+            case LINUX -> wayland ? "hint.hotkey.linuxWayland" : "hint.hotkey.linuxX11";
+            case WINDOWS -> "hint.hotkey.windows";
+            case OTHER -> "hint.hotkey.other";
         };
     }
 }
