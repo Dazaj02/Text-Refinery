@@ -34,7 +34,9 @@ $args = @(
     "--type", $Type,
     "--name", "Text Refinery",
     "--app-version", $version,
-    "--description", "Limpia y refina el texto del portapapeles",
+    # Windows muestra FileDescription como nombre del programa (Administrador de tareas, avisos): debe ser corto y ser la marca.
+    "--description", "Text Refinery",
+    "--copyright", "Text Refinery",
     "--vendor", "Text Refinery",
     "--input", $staging,
     "--main-jar", $jar.Name,

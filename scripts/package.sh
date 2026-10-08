@@ -32,7 +32,8 @@ cp "target/$JAR" "$STAGING"/
 jpackage --type "$TYPE" \
   --name "Text Refinery" \
   --app-version "$VERSION" \
-  --description "Limpia y refina el texto del portapapeles" \
+  --description "Text Refinery" \
+  --copyright "Text Refinery" \
   --vendor "Text Refinery" \
   --input "$STAGING" \
   --main-jar "$JAR" \
