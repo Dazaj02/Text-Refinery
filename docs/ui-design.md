@@ -1,6 +1,19 @@
 # Diseño de la interfaz
 
-Propuesta visual (lienzo «Text Refinery Interfaz», 3 pantallas) e implementada en JavaFX.
+Propuesta visual (lienzo «Text Refinery Interfaz») e implementada en JavaFX. El lienzo refleja la app tal
+como está implementada:
+
+| Tablero | Contenido |
+|---|---|
+| 1 · Limpieza | Perfiles, vista previa en vivo, procesadores. Ajustes de tablero: **tema** (claro/oscuro) e **idioma** (es/en) |
+| 2 · Atajos e IA | Atajos con teclas, motor Ollama, modo de IA. Mismos ajustes de tema e idioma |
+| 3 · General | Iniciar con el sistema, tema (se aplica al instante), idioma de la aplicación y del texto. «Guardar cambios» lleva a Limpieza, como en la app |
+| 4 · Bandeja y sistema de color | Menú de bandeja (es/en), avisos, escala roja y tabla de variables claro/oscuro |
+| 5 · Logo | Símbolo, variantes, tamaños reales |
+| Variantes | Limpieza oscuro, Atajos e IA en inglés, General oscuro e inglés |
+
+Los tableros 1–3 son interactivos y usan variables de color (`--bg`, `--ink`, `--accent-text`…) con los mismos nombres y valores que
+`theme.css`, de modo que el diseño y el CSS se corresponden uno a uno. La ventana tiene el tamaño real de la app (1040 × 760).
 
 ## Color
 
