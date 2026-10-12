@@ -18,6 +18,11 @@ opcionalmente lo refina con IA local (Ollama). Funciona en **Windows, macOS y Li
 Perfiles: **Word**, **LaTeX** (escapa `% & _ # $ { } ~ ^ \`), **Markdown** (convierte HTML copiado de la web) y **Texto plano**.
 Los atajos, el perfil, el modelo de IA y los procesadores activos se cambian desde *Ajustes…* en el menú de bandeja.
 
+**Cambiar un atajo** (*Ajustes → Atajos e IA*): pulsa **Cambiar**, mantén los modificadores (se ven en vivo) y pulsa una letra, número o
+tecla F; **Esc**, un clic fuera o cambiar de ventana cancelan. Mientras grabas, los atajos globales se suspenden para que también
+puedas elegir una combinación que ya está en uso, y si repites el de la otra acción te avisa al instante. **Restablecer** vuelve al
+atajo predeterminado (`Ctrl+Shift+Y` limpiar, `Ctrl+Shift+G` limpiar con IA); queda desactivado cuando ya es el predeterminado.
+
 ## Interfaz
 
 Tema propio en rojo (`#C8102E`) con escala tonal 50–900, barra lateral vino y componentes a medida

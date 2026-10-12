@@ -122,6 +122,9 @@ public final class App {
             executor.submit(() -> syncAutostart(autostart, updated.launchAtLogin, notifier, messages));
         }, autostart, messages);
 
+        // Al grabar un atajo nuevo se sueltan los atajos globales: si no, el que ya está asignado no llegaría a la ventana.
+        settingsWindow.setOnShortcutCapture(hotkeys::setSuspended);
+
         tray.install(settings.get(), new TrayController.Actions(
                 () -> executor.submit(clean::execute),
                 () -> executor.submit(clean::restoreOriginal),

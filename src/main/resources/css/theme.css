@@ -247,6 +247,14 @@
 }
 .button-outline:hover { -fx-background-color: -red-50; -fx-border-color: -red-200; }
 
+.button-ghost {
+    -fx-background-color: transparent; -fx-text-fill: -muted;
+    -fx-font-size: 13px; -fx-font-weight: 600;
+    -fx-padding: 8 10 8 10; -fx-background-radius: 9; -fx-cursor: hand;
+}
+.button-ghost:hover { -fx-text-fill: -accent-text; -fx-background-color: -red-50; }
+.button-ghost:disabled { -fx-opacity: 0.4; -fx-cursor: default; }
+
 /* ---------- Campos ---------- */
 .text-field {
     -fx-background-color: -surface;

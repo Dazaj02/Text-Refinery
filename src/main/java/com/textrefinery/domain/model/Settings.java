@@ -8,10 +8,15 @@ import java.util.Set;
  * Campos públicos con valores por defecto: un JSON incompleto sigue siendo válido.
  */
 public class Settings {
-    public CleaningProfile defaultProfile = CleaningProfile.WORD;
     // Sin Alt: en Windows Ctrl+Alt equivale a AltGr y puede activar la cinta de Office; Ctrl+Alt+V es "Pegado especial" en Word.
-    public String cleanHotkey = "Ctrl+Shift+Y";
-    public String aiHotkey = "Ctrl+Shift+G";
+    /** Atajo predeterminado de limpieza; el botón «Restablecer» de los ajustes vuelve a él. */
+    public static final String DEFAULT_CLEAN_HOTKEY = "Ctrl+Shift+Y";
+    /** Atajo predeterminado de limpieza con IA. */
+    public static final String DEFAULT_AI_HOTKEY = "Ctrl+Shift+G";
+
+    public CleaningProfile defaultProfile = CleaningProfile.WORD;
+    public String cleanHotkey = DEFAULT_CLEAN_HOTKEY;
+    public String aiHotkey = DEFAULT_AI_HOTKEY;
     public AiMode aiMode = AiMode.GRAMMAR;
     public String ollamaUrl = "http://localhost:11434";
     public String aiModel = "llama3.2";

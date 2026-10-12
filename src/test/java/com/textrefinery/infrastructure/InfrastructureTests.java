@@ -23,6 +23,18 @@ class InfrastructureTests {
     }
 
     @Test
+    void losAtajosPredeterminadosSonValidosDistintosYSinAlt() {
+        Hotkey clean = Hotkey.parse(Settings.DEFAULT_CLEAN_HOTKEY);
+        Hotkey ai = Hotkey.parse(Settings.DEFAULT_AI_HOTKEY);
+        assertThat(clean).isNotEqualTo(ai);
+        assertThat(clean.alt()).isFalse(); // Ctrl+Alt es AltGr en Windows y choca con Word
+        assertThat(ai.alt()).isFalse();
+        // Un Settings nuevo arranca con ellos: «Restablecer» de la ventana vuelve exactamente a este valor.
+        assertThat(new Settings().cleanHotkey).isEqualTo(Settings.DEFAULT_CLEAN_HOTKEY);
+        assertThat(new Settings().aiHotkey).isEqualTo(Settings.DEFAULT_AI_HOTKEY);
+    }
+
+    @Test
     void rechazaAtajosInvalidos() {
         assertThatThrownBy(() -> Hotkey.parse("V")).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> Hotkey.parse("Ctrl+")).isInstanceOf(IllegalArgumentException.class);

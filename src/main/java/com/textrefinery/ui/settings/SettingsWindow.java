@@ -45,6 +45,16 @@ public class SettingsWindow {
     private final MessagesPort messages;
     private Stage stage;
     private Runnable onClosed = () -> { };
+    private Consumer<Boolean> hotkeysSuspended = suspended -> { };
+    private List<SettingsPage> currentPages = List.of();
+
+    /**
+     * Se avisa con {@code true} cuando el usuario empieza a grabar un atajo nuevo y con {@code false} cuando termina.
+     * La app lo usa para soltar los atajos globales mientras tanto.
+     */
+    public void setOnShortcutCapture(Consumer<Boolean> hotkeysSuspended) {
+        this.hotkeysSuspended = hotkeysSuspended;
+    }
 
     public SettingsWindow(SettingsPort port, Supplier<Settings> current, Consumer<Settings> onSaved,
                           AutostartPort autostart, MessagesPort messages) {
@@ -69,7 +79,10 @@ public class SettingsWindow {
                 return;
             }
             stage = createStage();
-            stage.setOnHidden(e -> onClosed.run());
+            stage.setOnHidden(e -> {
+                currentPages.forEach(SettingsPage::dispose); // p. ej. cerrar la ventana en mitad de una grabación de atajo
+                onClosed.run();
+            });
             stage.show();
         });
     }
@@ -95,8 +108,10 @@ public class SettingsWindow {
      */
     private Parent buildRoot(String savedMessage) {
         BorderPane root = new BorderPane();
-        List<SettingsPage> pages = List.of(new CleaningPage(messages), new ShortcutsPage(messages),
+        currentPages.forEach(SettingsPage::dispose); // la ventana anterior ya no existe: suelta lo que tuviera en marcha
+        List<SettingsPage> pages = List.of(new CleaningPage(messages), new ShortcutsPage(messages, hotkeysSuspended),
                 new GeneralPage(messages, autostart, mode -> applyTheme(root, mode)));
+        currentPages = pages;
         pages.forEach(p -> p.load(current.get()));
 
         StackPane pageHost = new StackPane();

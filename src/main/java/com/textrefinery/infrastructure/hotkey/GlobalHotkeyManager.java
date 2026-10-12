@@ -28,6 +28,19 @@ public class GlobalHotkeyManager implements NativeKeyListener {
     private final Runnable onClean;
     private final Runnable onAi;
     private volatile long lastFired;
+    private volatile boolean suspended;
+
+    /**
+     * Mientras está suspendido el gestor ignora y NO consume ninguna tecla. Se usa al grabar un atajo nuevo en los ajustes:
+     * sin esto, pulsar una combinación que ya está asignada nunca llegaría a la ventana (el hook la intercepta antes).
+     */
+    public void setSuspended(boolean suspended) {
+        this.suspended = suspended;
+    }
+
+    public boolean isSuspended() {
+        return suspended;
+    }
 
     public GlobalHotkeyManager(Runnable onClean, Runnable onAi) {
         this.onClean = onClean;
@@ -64,6 +77,9 @@ public class GlobalHotkeyManager implements NativeKeyListener {
 
     @Override
     public void nativeKeyPressed(NativeKeyEvent e) {
+        if (suspended) {
+            return;
+        }
         boolean clean = matches(cleanKey, e);
         boolean ai = !clean && matches(aiKey, e);
         if (!clean && !ai) {
@@ -81,7 +97,7 @@ public class GlobalHotkeyManager implements NativeKeyListener {
 
     @Override
     public void nativeKeyReleased(NativeKeyEvent e) {
-        if (matches(cleanKey, e) || matches(aiKey, e)) {
+        if (!suspended && (matches(cleanKey, e) || matches(aiKey, e))) {
             consume(e);
         }
     }

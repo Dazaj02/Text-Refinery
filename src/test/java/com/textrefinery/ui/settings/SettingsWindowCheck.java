@@ -38,6 +38,8 @@ public final class SettingsWindowCheck {
     private static Settings current = new Settings();
     private static final List<Settings> saved = new ArrayList<>();
     private static final List<Settings> applied = new ArrayList<>();
+    /** Cada aviso de la ventana a la app: true = empieza a grabar un atajo, false = termina. */
+    private static final List<Boolean> suspended = new ArrayList<>();
 
     private record Step(double waitMs, Runnable action) { }
 
@@ -97,7 +99,7 @@ public final class SettingsWindowCheck {
                 return b;
             }
         }
-        throw new IllegalStateException("No hay botón '" + label + "'");
+        return null; // quien lo usa para comprobar que NO existe lo compara con null; quien lo pulsa fallará con un NPE claro
     }
 
     private static ToggleButton nav(int index) {
@@ -110,6 +112,20 @@ public final class SettingsWindowCheck {
 
     private static TextField field(int index) {
         return (TextField) all(".text-field").get(index);
+    }
+
+    private static Button changeButton(int index) {
+        return all(".button-outline").stream().filter(n -> n instanceof Button b && ("Cambiar".equals(b.getText()) || "Cancelar".equals(b.getText())))
+                .map(n -> (Button) n).toList().get(index);
+    }
+
+    private static List<Button> resetButtons() {
+        return all(".button-ghost").stream().map(n -> (Button) n).toList();
+    }
+
+    /** ¿Hay un mensaje de error visible con ese texto? */
+    private static boolean errorShown(String text) {
+        return all(".footer-error").stream().anyMatch(n -> n instanceof Label l && l.isVisible() && l.getText().equals(text));
     }
 
     private static List<String> keycaps() {
@@ -138,6 +154,12 @@ public final class SettingsWindowCheck {
 
     private static void click(Node n) {
         Event.fireEvent(n, new MouseEvent(MouseEvent.MOUSE_CLICKED, 0, 0, 0, 0, MouseButton.PRIMARY, 1,
+                false, false, false, false, true, false, false, true, false, false, null));
+    }
+
+    /** Pulsación del ratón (el clic real genera PRESSED y luego CLICKED; la grabación de atajos escucha PRESSED). */
+    private static void press(Node n) {
+        Event.fireEvent(n, new MouseEvent(MouseEvent.MOUSE_PRESSED, 0, 0, 0, 0, MouseButton.PRIMARY, 1,
                 false, false, false, false, true, false, false, true, false, false, null));
     }
 
@@ -179,31 +201,67 @@ public final class SettingsWindowCheck {
             click(all(".toggle-switch").get(5));
         });
 
-        // ===== Atajos e IA: captura de teclas
+        // ===== Atajos e IA: grabar, mostrar en vivo, rechazar, cancelar y restablecer
         step(() -> nav(1).fire());
         step(() -> {
             check("teclas iniciales Ctrl+Shift+Y y Ctrl+Shift+G", keycaps().equals(List.of("Ctrl", "Shift", "Y", "Ctrl", "Shift", "G")), keycaps().toString());
-            button(".button-outline", "Cambiar").fire();
+            check("«Restablecer» está desactivado si ya es el predeterminado", resetButtons().stream().allMatch(Button::isDisabled), "");
+            changeButton(0).fire();
         });
         step(200, () -> {
-            check("'Cambiar' entra en modo captura", button(".button-outline", "Pulsa la combinación…") != null, "");
+            check("'Cambiar' entra en modo captura (el botón pasa a 'Cancelar')", button(".button-outline", "Cancelar") != null, "");
+            check("al grabar se sueltan los atajos globales", suspended.equals(List.of(true)), suspended.toString());
+            check("espera con «Pulsa la combinación…»", all(".keycap-capturing").stream().anyMatch(n -> ((Label) n).getText().startsWith("Pulsa")), "");
+            key(KeyCode.CONTROL, true, false); // se mantiene Ctrl
+        });
+        step(150, () -> {
+            check("muestra EN VIVO la tecla que se mantiene (Ctrl …)", keycaps().subList(0, 2).equals(List.of("Ctrl", "…")), keycaps().toString());
             key(KeyCode.K, false, false); // sin modificador
         });
         step(150, () -> {
-            check("rechaza tecla sin modificador", button(".button-outline", "Pulsa la combinación…") != null, "");
+            check("rechaza tecla sin modificador y lo dice en la tarjeta", errorShown("Añade Ctrl, Shift, Alt o Cmd al atajo.") && button(".button-outline", "Cancelar") != null, "");
             key(KeyCode.COMMA, true, false); // Ctrl+, no soportada
         });
         step(150, () -> {
-            check("rechaza tecla no soportada", button(".button-outline", "Pulsa la combinación…") != null, "");
-            key(KeyCode.K, true, true); // Ctrl+Shift+K
+            check("rechaza tecla no soportada y sigue grabando", errorShown("Usa una letra, un número o una tecla F.") && button(".button-outline", "Cancelar") != null, "");
+            key(KeyCode.G, true, true); // Ctrl+Shift+G ya es el atajo de la IA
+        });
+        step(150, () -> {
+            check("rechaza un atajo repetido al instante", errorShown("Ese atajo ya lo usa la otra acción.") && button(".button-outline", "Cancelar") != null, "");
+            key(KeyCode.K, true, true); // Ctrl+Shift+K válido
         });
         step(250, () -> {
-            check("captura Ctrl+Shift+K", keycaps().subList(0, 3).equals(List.of("Ctrl", "Shift", "K")), keycaps().toString());
-            all(".button-outline").stream().filter(n -> n instanceof Button b && "Cambiar".equals(b.getText())).map(n -> (Button) n).toList().get(1).fire();
+            check("captura Ctrl+Shift+K y termina", keycaps().subList(0, 3).equals(List.of("Ctrl", "Shift", "K")) && button(".button-outline", "Cancelar") == null, keycaps().toString());
+            check("al terminar se devuelven los atajos globales", suspended.equals(List.of(true, false)), suspended.toString());
+            check("«Restablecer» se activa al cambiar", !resetButtons().get(0).isDisabled() && resetButtons().get(1).isDisabled(), "");
+            resetButtons().get(0).fire();
         });
-        step(200, () -> key(KeyCode.ESCAPE, false, false));
         step(200, () -> {
-            check("Esc cancela y conserva el atajo", keycaps().subList(3, 6).equals(List.of("Ctrl", "Shift", "G")), keycaps().toString());
+            check("«Restablecer» vuelve a Ctrl+Shift+Y", keycaps().subList(0, 3).equals(List.of("Ctrl", "Shift", "Y")), keycaps().toString());
+            check("y se desactiva otra vez", resetButtons().stream().allMatch(Button::isDisabled), "");
+            changeButton(0).fire();
+        });
+        step(200, () -> {
+            press(all(".page-title").get(0)); // pulsar el ratón en cualquier otro sitio cancela
+        });
+        step(200, () -> {
+            check("un clic fuera cancela la grabación y suelta los atajos", button(".button-outline", "Cancelar") == null && suspended.equals(List.of(true, false, true, false)), suspended.toString());
+            check("y conserva el atajo", keycaps().subList(0, 3).equals(List.of("Ctrl", "Shift", "Y")), keycaps().toString());
+            changeButton(0).fire();
+        });
+        step(200, () -> changeButton(1).fire()); // empezar en la otra tarjeta cancela la primera
+        step(200, () -> {
+            check("empezar otra grabación cancela la anterior", all(".button-outline").stream().filter(n -> n instanceof Button b && "Cancelar".equals(b.getText())).count() == 1, "");
+            check("los atajos globales siguen soltados (una sola grabación)", suspended.equals(List.of(true, false, true, false, true, false, true)), suspended.toString());
+            key(KeyCode.ESCAPE, false, false);
+        });
+        step(200, () -> {
+            check("Esc cancela y conserva el atajo", keycaps().equals(List.of("Ctrl", "Shift", "Y", "Ctrl", "Shift", "G")) && suspended.get(suspended.size() - 1) == false, keycaps().toString());
+            changeButton(0).fire();
+        });
+        step(200, () -> key(KeyCode.K, true, true));
+        step(250, () -> {
+            check("queda Ctrl+Shift+K para guardar", keycaps().subList(0, 3).equals(List.of("Ctrl", "Shift", "K")), keycaps().toString());
             segment(0).fire(); // modo IA = Resumir
             field(0).setText("phi3");
         });
@@ -329,6 +387,7 @@ public final class SettingsWindowCheck {
                 public void setEnabled(boolean e) {
                 }
             }, MESSAGES);
+            window.setOnShortcutCapture(suspended::add);
             current.appLanguage = Language.ES; // independiente del idioma del equipo donde se ejecute
             stage = window.createStage();
             stage.show();
