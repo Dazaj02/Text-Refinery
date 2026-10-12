@@ -50,6 +50,10 @@ Detalles del diseño y de la paleta en [docs/ui-design.md](docs/ui-design.md).
 
 1. Instala [Ollama](https://ollama.com) (`winget install Ollama.Ollama` en Windows) y descarga el modelo: `ollama pull llama3.2` (~2 GB).
 2. En *Ajustes → Atajos e IA* pulsa **Probar conexión**: debe decir «Conectado».
+   Con **Iniciar Ollama automáticamente** activado (lo está por defecto), si Ollama no está abierto la app lo arranca ella sola al
+   usar la IA o al pulsar *Probar conexión* (la primera vez tarda unos segundos más) y lo cierra al salir. Solo cierra el que arrancó
+   ella: si ya lo tenías abierto, no lo toca. Solo aplica a una dirección local (`localhost`); si Ollama no está instalado, la app sigue
+   limpiando y avisa de que la IA no está disponible. Abrir la ventana de ajustes nunca lo arranca.
 3. Copia un texto y pulsa **Ctrl+Shift+G**: se limpia y se refina según el modo elegido (resumir, corregir gramática o párrafo citable).
 
 Para ver cómo responde el modelo sin usar la app (3 modos, tiempo y comprobación automática de que no aparecen cifras que no estén

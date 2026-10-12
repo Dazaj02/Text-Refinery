@@ -85,6 +85,12 @@ class OllamaAiProviderTest {
     }
 
     @Test
+    void quitaLasEtiquetasDelPromptSiElModeloLasDevuelve() {
+        reply = "{\"response\":\"<texto>\\nHola, ¿cómo estás?\\n</texto>\"}";
+        assertThat(new OllamaAiProvider(() -> settings).refine("hola", AiMode.GRAMMAR)).isEqualTo("Hola, ¿cómo estás?");
+    }
+
+    @Test
     void elIdiomaElegidoLlegaAlPromptQueSeEnvia() {
         settings.textLanguage = com.textrefinery.domain.model.Language.EN;
         new OllamaAiProvider(() -> settings).refine("hello there", AiMode.GRAMMAR);
@@ -168,5 +174,113 @@ class OllamaAiProviderTest {
         }
         assertThat(clipboard[0]).isEqualTo("hola mundo");
         assertThat(errors).hasSize(1);
+    }
+
+    // ------------------------------------------------ arranque automático de Ollama
+
+    /** Lanzador falso: cuenta las llamadas y, si se le pide, "arranca" el servidor de prueba en el mismo puerto. */
+    private final class FakeLauncher extends com.textrefinery.infrastructure.ai.OllamaLauncher {
+        int starts;
+        boolean succeeds = true;
+        int port;
+
+        @Override
+        public synchronized boolean start() {
+            starts++;
+            if (succeeds) {
+                try {
+                    server = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
+                    server.createContext("/api/tags", ex -> {
+                        ex.sendResponseHeaders(200, -1);
+                        ex.close();
+                    });
+                    server.createContext("/api/generate", ex -> {
+                        ex.getRequestBody().readAllBytes();
+                        byte[] body = reply.getBytes(StandardCharsets.UTF_8);
+                        ex.sendResponseHeaders(200, body.length);
+                        ex.getResponseBody().write(body);
+                        ex.close();
+                    });
+                    server.start();
+                } catch (IOException e) {
+                    return false;
+                }
+            }
+            return succeeds;
+        }
+    }
+
+    @Test
+    void siOllamaNoRespondeYElAjusteEstaActivoLoArrancaYEspera() {
+        FakeLauncher launcher = new FakeLauncher();
+        launcher.port = server.getAddress().getPort();
+        server.stop(0);
+        settings.autoStartOllama = true;
+
+        assertThat(new OllamaAiProvider(() -> settings, launcher).ensureAvailable(settings)).isTrue();
+        assertThat(launcher.starts).isEqualTo(1);
+    }
+
+    @Test
+    void conElAjusteApagadoNuncaArrancaOllama() {
+        FakeLauncher launcher = new FakeLauncher();
+        server.stop(0);
+        settings.autoStartOllama = false;
+
+        assertThat(new OllamaAiProvider(() -> settings, launcher).ensureAvailable(settings)).isFalse();
+        assertThat(launcher.starts).isZero();
+    }
+
+    @Test
+    void siYaEstabaEnMarchaNoLoVuelveAArrancar() {
+        FakeLauncher launcher = new FakeLauncher();
+        settings.autoStartOllama = true;
+
+        assertThat(new OllamaAiProvider(() -> settings, launcher).ensureAvailable(settings)).isTrue();
+        assertThat(launcher.starts).isZero();
+    }
+
+    @Test
+    void conUnaDireccionRemotaNoArrancaNada() {
+        FakeLauncher launcher = new FakeLauncher();
+        settings.autoStartOllama = true;
+        settings.ollamaUrl = "http://192.0.2.1:11434";
+
+        assertThat(new OllamaAiProvider(() -> settings, launcher).ensureAvailable(settings)).isFalse();
+        assertThat(launcher.starts).isZero();
+    }
+
+    @Test
+    void siOllamaNoSePuedeArrancarSeDevuelveFalseSinEsperar() {
+        FakeLauncher launcher = new FakeLauncher();
+        launcher.succeeds = false;
+        server.stop(0);
+        settings.autoStartOllama = true;
+
+        long t0 = System.nanoTime();
+        assertThat(new OllamaAiProvider(() -> settings, launcher).ensureAvailable(settings)).isFalse();
+        assertThat(launcher.starts).isEqualTo(1);
+        assertThat((System.nanoTime() - t0) / 1_000_000).isLessThan(5_000);
+    }
+
+    @Test
+    void refinarArrancaOllamaSiHaceFalta() {
+        FakeLauncher launcher = new FakeLauncher();
+        launcher.port = server.getAddress().getPort();
+        server.stop(0);
+        settings.autoStartOllama = true;
+
+        assertThat(new OllamaAiProvider(() -> settings, launcher).refine("hola", AiMode.GRAMMAR).strip())
+                .isEqualTo("Texto refinado.");
+        assertThat(launcher.starts).isEqualTo(1);
+    }
+
+    @Test
+    void elLanzadorSoloArrancaServidoresLocales() {
+        assertThat(com.textrefinery.infrastructure.ai.OllamaLauncher.isLocal("http://localhost:11434")).isTrue();
+        assertThat(com.textrefinery.infrastructure.ai.OllamaLauncher.isLocal("http://127.0.0.1:11434/")).isTrue();
+        assertThat(com.textrefinery.infrastructure.ai.OllamaLauncher.isLocal("http://[::1]:11434")).isTrue();
+        assertThat(com.textrefinery.infrastructure.ai.OllamaLauncher.isLocal("http://otro-equipo:11434")).isFalse();
+        assertThat(com.textrefinery.infrastructure.ai.OllamaLauncher.isLocal("no es una url")).isFalse();
     }
 }

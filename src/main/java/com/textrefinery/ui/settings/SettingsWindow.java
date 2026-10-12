@@ -5,10 +5,12 @@ import com.textrefinery.domain.model.ThemeMode;
 import com.textrefinery.domain.port.AutostartPort;
 import com.textrefinery.domain.port.MessagesPort;
 import com.textrefinery.domain.port.SettingsPort;
+import com.textrefinery.infrastructure.ai.OllamaAiProvider;
 import com.textrefinery.ui.components.BrandLogo;
 import com.textrefinery.ui.components.Icons;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
@@ -46,6 +48,7 @@ public class SettingsWindow {
     private Stage stage;
     private Runnable onClosed = () -> { };
     private Consumer<Boolean> hotkeysSuspended = suspended -> { };
+    private Predicate<Settings> aiConnector = s -> new OllamaAiProvider(() -> s).isAvailable();
     private List<SettingsPage> currentPages = List.of();
 
     /**
@@ -54,6 +57,13 @@ public class SettingsWindow {
      */
     public void setOnShortcutCapture(Consumer<Boolean> hotkeysSuspended) {
         this.hotkeysSuspended = hotkeysSuspended;
+    }
+
+    /**
+     * Cómo comprueba la ventana la conexión con la IA (y, si los ajustes lo piden, arranca el motor). Por defecto solo mira.
+     */
+    public void setAiConnector(Predicate<Settings> aiConnector) {
+        this.aiConnector = aiConnector;
     }
 
     public SettingsWindow(SettingsPort port, Supplier<Settings> current, Consumer<Settings> onSaved,
@@ -109,7 +119,7 @@ public class SettingsWindow {
     private Parent buildRoot(String savedMessage) {
         BorderPane root = new BorderPane();
         currentPages.forEach(SettingsPage::dispose); // la ventana anterior ya no existe: suelta lo que tuviera en marcha
-        List<SettingsPage> pages = List.of(new CleaningPage(messages), new ShortcutsPage(messages, hotkeysSuspended),
+        List<SettingsPage> pages = List.of(new CleaningPage(messages), new ShortcutsPage(messages, hotkeysSuspended, aiConnector),
                 new GeneralPage(messages, autostart, mode -> applyTheme(root, mode)));
         currentPages = pages;
         pages.forEach(p -> p.load(current.get()));

@@ -10,6 +10,7 @@ import com.textrefinery.domain.port.AutostartPort;
 import com.textrefinery.domain.port.MessagesPort;
 import com.textrefinery.domain.port.NotifierPort;
 import com.textrefinery.infrastructure.ai.OllamaAiProvider;
+import com.textrefinery.infrastructure.ai.OllamaLauncher;
 import com.textrefinery.infrastructure.autostart.SystemAutostart;
 import com.textrefinery.infrastructure.clipboard.AwtClipboardAdapter;
 import com.textrefinery.infrastructure.config.AppPaths;
@@ -97,8 +98,10 @@ public final class App {
         AwtClipboardAdapter clipboard = new AwtClipboardAdapter();
         CleanClipboardUseCase clean = new CleanClipboardUseCase(
                 clipboard, new PipelineFactory(), notifier, settings::get, messages);
+        OllamaLauncher ollamaLauncher = new OllamaLauncher();
+        OllamaAiProvider aiProvider = new OllamaAiProvider(settings::get, ollamaLauncher);
         RefineWithAiUseCase refine = new RefineWithAiUseCase(
-                clean, new OllamaAiProvider(settings::get), clipboard, notifier, settings::get, executor, messages);
+                clean, aiProvider, clipboard, notifier, settings::get, executor, messages);
 
         GlobalHotkeyManager hotkeys = new GlobalHotkeyManager(
                 () -> executor.submit(() -> {
@@ -115,6 +118,7 @@ public final class App {
 
         Runnable exit = () -> {
             hotkeys.stop();
+            ollamaLauncher.stop(); // solo cierra el Ollama que arrancó la app
             tray.remove();
             Platform.exit();
             executor.shutdownNow();
@@ -134,6 +138,7 @@ public final class App {
 
         // Al grabar un atajo nuevo se sueltan los atajos globales: si no, el que ya está asignado no llegaría a la ventana.
         settingsWindow.setOnShortcutCapture(hotkeys::setSuspended);
+        settingsWindow.setAiConnector(aiProvider::ensureAvailable);
 
         tray.install(settings.get(), new TrayController.Actions(
                 () -> executor.submit(clean::execute),

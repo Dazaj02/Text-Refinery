@@ -3,15 +3,16 @@ package com.textrefinery.ui.settings;
 import com.textrefinery.domain.model.AiMode;
 import com.textrefinery.domain.model.Settings;
 import com.textrefinery.domain.port.MessagesPort;
-import com.textrefinery.infrastructure.ai.OllamaAiProvider;
 import com.textrefinery.infrastructure.hotkey.Hotkey;
 import com.textrefinery.ui.components.Icons;
+import com.textrefinery.ui.components.ToggleSwitch;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
@@ -58,14 +59,18 @@ final class ShortcutsPage implements SettingsPage {
     private final TextField model = new TextField();
     private final TextField url = new TextField();
     private final TextField timeout = new TextField();
+    private final ToggleSwitch autoStart = new ToggleSwitch();
+    /** Comprueba (y, si el ajuste lo permite, arranca) el motor con la configuración recibida. */
+    private final Predicate<Settings> aiConnector;
     private final Label connection = new Label();
     private final Circle connectionDot = new Circle(3.5);
     private final HBox connectionChip = new HBox(6);
     private final ScrollPane root = new ScrollPane();
     private boolean checkedOnce;
 
-    ShortcutsPage(MessagesPort messages, Consumer<Boolean> hotkeysSuspended) {
+    ShortcutsPage(MessagesPort messages, Consumer<Boolean> hotkeysSuspended, Predicate<Settings> aiConnector) {
         this.messages = messages;
+        this.aiConnector = aiConnector;
         this.hotkeysSuspended = hotkeysSuspended;
         // Cada editor necesita saber el valor del otro (para rechazar duplicados); se pide por método porque los campos
         // finales aún no están asignados dentro de una lambda del constructor.
@@ -128,9 +133,10 @@ final class ShortcutsPage implements SettingsPage {
         model.setText(s.aiModel);
         url.setText(s.ollamaUrl);
         timeout.setText(String.valueOf(s.aiTimeoutSeconds));
+        autoStart.setSelected(s.autoStartOllama);
         if (!checkedOnce) {
             checkedOnce = true;
-            testConnection();
+            testConnection(false); // solo mirar: abrir los ajustes no debe arrancar Ollama
         }
     }
 
@@ -162,6 +168,7 @@ final class ShortcutsPage implements SettingsPage {
         target.aiModel = model.getText().strip();
         target.ollamaUrl = url.getText().strip();
         target.aiTimeoutSeconds = seconds;
+        target.autoStartOllama = autoStart.isSelected();
     }
 
     /** Si hay una grabación en curso la cancela y devuelve los atajos globales (al cerrar la ventana o reconstruirla). */
@@ -488,7 +495,7 @@ final class ShortcutsPage implements SettingsPage {
         setConnection(messages.get("ai.status.unchecked"), null);
         Button test = new Button(messages.get("ai.test"));
         test.getStyleClass().add("button-secondary");
-        test.setOnAction(e -> testConnection());
+        test.setOnAction(e -> testConnection(true));
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         HBox header = new HBox(10, title, connectionChip, spacer, test);
@@ -529,7 +536,14 @@ final class ShortcutsPage implements SettingsPage {
         HBox note = new HBox(12, new StackPane(lock), noteText);
         note.getStyleClass().add("note-box");
 
-        VBox body = new VBox(18, new VBox(8, modeLabel, segments, modeHint), fields, note);
+        autoStart.setAccessibleText(messages.get("ai.autostart.row"));
+        Label autoStartHint = new Label(messages.get("ai.autostart.hint"));
+        autoStartHint.getStyleClass().add("processor-hint");
+        autoStartHint.setWrapText(true);
+        HBox autoStartRow = GeneralPage.row(messages.get("ai.autostart.row"), autoStartHint, autoStart);
+        autoStartRow.setPadding(new Insets(0));
+
+        VBox body = new VBox(18, new VBox(8, modeLabel, segments, modeHint), fields, autoStartRow, note);
         body.setPadding(new Insets(18));
 
         VBox card = new VBox(header, body);
@@ -570,15 +584,19 @@ final class ShortcutsPage implements SettingsPage {
         connection.setStyle("-fx-text-fill: inherit; -fx-font-size: 12px; -fx-font-weight: bold;");
     }
 
-    /** Comprueba la dirección escrita (aunque aún no esté guardada), sin bloquear la ventana. */
-    private void testConnection() {
+    /**
+     * Comprueba la dirección escrita (aunque aún no esté guardada), sin bloquear la ventana.
+     * Con {@code startIfNeeded} y el interruptor activo, arranca Ollama si no responde (botón «Probar conexión»).
+     */
+    private void testConnection(boolean startIfNeeded) {
         setConnection(messages.get("ai.status.checking"), null);
         Settings probe = new Settings();
+        probe.autoStartOllama = startIfNeeded && autoStart.isSelected();
         probe.ollamaUrl = url.getText().isBlank() ? "http://localhost:11434" : url.getText().strip();
         Thread t = new Thread(() -> {
             boolean ok;
             try {
-                ok = new OllamaAiProvider(() -> probe).isAvailable();
+                ok = aiConnector.test(probe);
             } catch (RuntimeException e) {
                 ok = false;
             }

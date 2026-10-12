@@ -10,7 +10,7 @@ ui / infrastructure ──► application ──► domain
 |------|---------|-----------|
 | Dominio | `domain.model`, `domain.processor`, `domain.port` | Perfiles, ajustes, procesadores de texto, interfaces (puertos). Sin dependencias de SO, UI ni red (salvo Jsoup/flexmark en los procesadores HTML). |
 | Aplicación | `application` | `CleanClipboardUseCase`, `RefineWithAiUseCase`, `PipelineFactory`. |
-| Infraestructura | `infrastructure.*` | Adaptadores: `clipboard` (AWT), `hotkey` (JNativeHook), `ai` (Ollama), `config` (JSON y rutas por SO), `lock` (instancia única), `notify`, `autostart` (registro / LaunchAgent / .desktop), `logging` (app.log), `platform` (SO y limitaciones). |
+| Infraestructura | `infrastructure.*` | Adaptadores: `clipboard` (AWT), `hotkey` (JNativeHook), `ai` (Ollama y `OllamaLauncher`, que lo arranca si hace falta y lo cierra al salir solo si lo arrancó la app), `config` (JSON y rutas por SO), `lock` (instancia única), `notify`, `autostart` (registro / LaunchAgent / .desktop), `logging` (app.log), `platform` (SO y limitaciones). |
 | UI | `ui.*` | `tray` (AWT `SystemTray`), `settings` (ventana JavaFX por páginas), `components` (ToggleSwitch, Icons, BrandLogo, Fonts). |
 | Composición | `App` | Único lugar donde se instancian y conectan los adaptadores. |
 
@@ -33,7 +33,8 @@ nunca en disco ni en el registro, y se pierde al cerrar la app. Si el portapapel
 |---|---|
 | Atajo global no disponible (permiso, Wayland, combinación ocupada) | Se avisa con una pista según el SO; la app y el menú de bandeja siguen funcionando |
 | Sin bandeja del sistema | Se abre la ventana de ajustes; al cerrarla termina la app |
-| Ollama caído, lento o con error | Se aplica solo la limpieza y se avisa |
+| Ollama caído | Si el ajuste «Iniciar Ollama automáticamente» está activo y la dirección es local, la app lo arranca y espera hasta 25 s; si no se puede, se aplica solo la limpieza y se avisa |
+| Ollama lento o con error | Se aplica solo la limpieza y se avisa |
 | Portapapeles bloqueado | Reintenta ~1 s; si no, avisa en vez de decir «Texto limpio» |
 | No se puede escribir `app.log` | La app sigue; solo hay consola |
 

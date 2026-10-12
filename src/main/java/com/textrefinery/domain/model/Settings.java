@@ -21,6 +21,8 @@ public class Settings {
     public String ollamaUrl = "http://localhost:11434";
     public String aiModel = "llama3.2";
     public int aiTimeoutSeconds = 60;
+    /** Si Ollama es local y no está en marcha, la app lo arranca al usar la IA (y lo cierra al salir). */
+    public boolean autoStartOllama = true;
     public int maxClipboardChars = 200_000;
     public Set<String> disabledProcessors = new HashSet<>();
     /** Preferencia del usuario; el estado real del arranque lo guarda el sistema operativo (ver AutostartPort). */
@@ -40,6 +42,7 @@ public class Settings {
         c.ollamaUrl = ollamaUrl;
         c.aiModel = aiModel;
         c.aiTimeoutSeconds = aiTimeoutSeconds;
+        c.autoStartOllama = autoStartOllama;
         c.maxClipboardChars = maxClipboardChars;
         c.disabledProcessors = new HashSet<>(disabledProcessors);
         c.launchAtLogin = launchAtLogin;
