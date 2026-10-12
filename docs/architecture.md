@@ -14,6 +14,9 @@ ui / infrastructure ──► application ──► domain
 | UI | `ui.*` | `tray` (AWT `SystemTray`), `settings` (ventana JavaFX por páginas), `components` (ToggleSwitch, Icons, BrandLogo, Fonts). |
 | Composición | `App` | Único lugar donde se instancian y conectan los adaptadores. |
 
+`infrastructure.platform.WindowsAppIdentity` da a la app una identidad propia en Windows (AppUserModelID + nombre e icono en el
+registro): sin ella los avisos de la bandeja y la barra de tareas se atribuyen a `javaw.exe`. Usa JNA solo en Windows.
+
 Puertos del dominio: `ClipboardPort`, `AiProviderPort`, `NotifierPort`, `SettingsPort`, `AutostartPort` y `MessagesPort`
 (textos de la interfaz en el idioma activo; implementado por `infrastructure.i18n.ResourceBundleMessages`, que cambia en caliente).
 Los casos de uso piden sus avisos a `MessagesPort`, de modo que cambiar el idioma no requiere reconstruirlos.

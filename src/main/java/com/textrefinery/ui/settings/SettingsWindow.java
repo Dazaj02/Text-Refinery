@@ -94,7 +94,7 @@ public class SettingsWindow {
 
         Stage st = new Stage();
         st.setTitle(messages.get("window.title"));
-        st.getIcons().addAll(BrandLogo.fxImage(32), BrandLogo.fxImage(64), BrandLogo.fxImage(256));
+        st.getIcons().addAll(BrandLogo.windowIcons()); // PNG, no snapshot: si no, Windows ignora el icono de la ventana
         st.setMinWidth(940);
         st.setMinHeight(660);
         st.setScene(scene);

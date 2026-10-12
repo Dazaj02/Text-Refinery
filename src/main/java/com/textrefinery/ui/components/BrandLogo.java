@@ -80,6 +80,25 @@ public final class BrandLogo {
         return canvas.snapshot(params, null);
     }
 
+    /**
+     * Iconos de ventana para {@code Stage.getIcons()}. Deben ser imágenes cargadas desde un PNG: JavaFX ignora en silencio
+     * (en Windows la ventana se queda sin icono y la barra de tareas muestra el de Java) las imágenes dibujadas con
+     * {@link #fxImage(int)}, que vienen de un {@code snapshot}. Medido con WM_GETICON sobre una ventana real.
+     */
+    public static java.util.List<Image> windowIcons() {
+        java.util.List<Image> icons = new java.util.ArrayList<>();
+        for (int px : new int[]{16, 32, 48, 64, 256}) {
+            try {
+                java.io.ByteArrayOutputStream png = new java.io.ByteArrayOutputStream();
+                javax.imageio.ImageIO.write(awtImage(px), "png", png);
+                icons.add(new Image(new java.io.ByteArrayInputStream(png.toByteArray())));
+            } catch (java.io.IOException e) {
+                // sin ese tamaño: queda el resto
+            }
+        }
+        return icons;
+    }
+
     /** Imagen de AWT para la bandeja del sistema. */
     public static BufferedImage awtImage(int px) {
         BufferedImage img = new BufferedImage(px, px, BufferedImage.TYPE_INT_ARGB);

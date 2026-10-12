@@ -22,6 +22,7 @@ import com.textrefinery.infrastructure.logging.FileLogging;
 import com.textrefinery.infrastructure.notify.LogNotifier;
 import com.textrefinery.infrastructure.notify.TrayNotifier;
 import com.textrefinery.infrastructure.platform.PlatformInfo;
+import com.textrefinery.infrastructure.platform.WindowsAppIdentity;
 import com.textrefinery.ui.components.BrandLogo;
 import com.textrefinery.ui.settings.SettingsWindow;
 import com.textrefinery.ui.tray.TrayController;
@@ -30,6 +31,8 @@ import java.awt.Taskbar;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import javax.imageio.ImageIO;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -62,6 +65,13 @@ public final class App {
         });
         log.info("Iniciando · Java {} · SO {} · lanzador {}", System.getProperty("java.version"),
                 System.getProperty("os.name"), System.getProperty("jpackage.app-path", "(java -jar)"));
+
+        // Identidad propia en Windows: sin ella los avisos salen como «OpenJDK Platform binary». Antes de crear la bandeja.
+        if (WindowsAppIdentity.setProcessId()) {
+            Thread registration = new Thread(App::registerWindowsIdentity, "identidad-windows");
+            registration.setDaemon(true);
+            registration.start();
+        }
 
         SingleInstanceLock lock = new SingleInstanceLock(AppPaths.configDir().resolve("app.lock"));
         if (!lock.tryAcquire()) {
@@ -154,10 +164,25 @@ public final class App {
             log.warn("El sistema no ofrece bandeja: se abre la ventana de ajustes; al cerrarla termina la app.");
             settingsWindow.setOnClosed(exit);
             settingsWindow.show();
+        } else if (Arrays.asList(args).contains("--settings")) {
+            settingsWindow.show(); // útil para accesos directos y para comprobar el icono de la ventana en la barra de tareas
         }
         setDockIcon();
         log.info("Text Refinery listo. Limpieza: {}  IA: {}", settings.get().cleanHotkey, settings.get().aiHotkey);
         Runtime.getRuntime().addShutdownHook(new Thread(lock::release));
+    }
+
+    /** Escribe el icono y registra el nombre «Text Refinery» para Windows (avisos y barra de tareas). */
+    private static void registerWindowsIdentity() {
+        try {
+            Path icon = AppPaths.configDir().resolve("app-icon.png");
+            Files.createDirectories(icon.getParent());
+            ImageIO.write(BrandLogo.awtImage(256), "png", icon.toFile());
+            boolean ok = WindowsAppIdentity.register("Text Refinery", icon);
+            log.info("Identidad de la app en Windows: {}", ok ? "registrada" : "no se pudo registrar");
+        } catch (IOException | RuntimeException e) {
+            log.warn("No se pudo preparar la identidad de la app: {}", e.getClass().getSimpleName());
+        }
     }
 
     /** Abre app.log con el programa predeterminado del sistema (o su carpeta si no hay ninguno asociado). */
