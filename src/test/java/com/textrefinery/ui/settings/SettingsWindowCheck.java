@@ -296,9 +296,15 @@ public final class SettingsWindowCheck {
         });
         step(200, () -> check("Restaurar recarga lo último guardado", "phi3".equals(field(0).getText()), field(0).getText()));
         step(() -> button(".button-secondary", "Probar conexión").fire());
-        step(2500, () -> check("sin Ollama muestra 'Sin conexión'",
-                all(".chip").stream().anyMatch(n -> n instanceof javafx.scene.layout.HBox hb
-                        && hb.getChildren().stream().anyMatch(c -> c instanceof Label l && "Sin conexión".equals(l.getText()))), ""));
+        // El resultado depende del equipo (con Ollama instalado y corriendo es «Conectado»): lo que se comprueba es que
+        // la comprobación TERMINA con una de las dos respuestas y no se queda en «Comprobando…».
+        step(3000, () -> {
+            List<String> chips = all(".chip").stream().filter(n -> n instanceof javafx.scene.layout.HBox)
+                    .flatMap(n -> ((javafx.scene.layout.HBox) n).getChildren().stream())
+                    .filter(c -> c instanceof Label).map(c -> ((Label) c).getText()).toList();
+            check("«Probar conexión» termina en «Conectado» o «Sin conexión»",
+                    chips.contains("Conectado") || chips.contains("Sin conexión"), chips.toString());
+        });
 
         // ===== General: tema (en vivo, guardado, persistente tras reconstruir)
         step(() -> nav(2).fire());

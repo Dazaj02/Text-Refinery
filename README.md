@@ -119,23 +119,26 @@ doble clic y no hay consola. Solo contiene eventos, longitudes de texto y tipos 
 | El atajo no hace nada | Ver registro: ¿dice «No se pudo activar el atajo global»? Cambia la combinación en *Ajustes → Atajos e IA* |
 | «IA no disponible» | *Atajos e IA → Probar conexión*; ¿está Ollama corriendo y el modelo descargado? |
 | No arranca con el sistema | *General → Iniciar con el sistema*; no está disponible al ejecutar desde el código fuente |
-| Windows lo muestra como «OpenJDK Platform binary» | Es lo normal con `java -jar`: el proceso es `javaw.exe`. Ejecuta el paquete (ver abajo) |
+| Los avisos o la barra de tareas dicen «OpenJDK» o muestran el icono de Java | Cierra la app anterior y abre la nueva (ver abajo). Si sigue pasando, mira `app.log`: debe decir «Identidad de la app en Windows: registrada» |
 
-### ¿Por qué aparece «OpenJDK Platform binary»?
+### Nombre e icono en Windows («OpenJDK Platform binary»)
 
-Con `java -jar …` el programa que corre es `javaw.exe`, y Windows usa **su** nombre, icono y descripción en el Administrador de
-tareas y en los avisos. Opciones, de mejor a peor:
+Con `java -jar …` el programa que corre es `javaw.exe`, y Windows le atribuye **su** nombre, icono y descripción. La app lo corrige en
+tres sitios, y cada uno se comprobó contra Windows (no solo en el código):
 
-1. **Ejecutar el paquete** (`scripts\package.ps1 -Type app-image`, o el instalador): genera `Text Refinery.exe`, con su nombre, icono y
-   descripción propios, y trae su propio Java. Es la solución real y es lo que se entrega.
-2. **Acceso directo con el logo** apuntando a `javaw.exe -jar …`: cambia el icono del acceso, pero el proceso y los avisos
-   siguen diciendo OpenJDK.
-3. **Envoltorio `.exe`** (Launch4j o similar) que lanza el jar: da un `.exe` con nombre propio, pero añade otra herramienta y el
-   proceso real sigue siendo Java; el paquete de `jpackage` ya resuelve lo mismo.
-4. **Identidad propia en los avisos** (AppUserModelID mediante un acceso directo en el menú Inicio): requiere código nativo para un
-   cambio solo visual; el instalador (`-Type exe`) ya registra el programa en el menú Inicio.
+| Dónde | Qué hace la app | Cómo se comprobó |
+|---|---|---|
+| **Avisos** («Texto limpio ✓») | Declara una identidad propia (`SetCurrentProcessExplicitAppUserModelID`, vía JNA) y registra nombre e icono en `HKCU\Software\Classes\AppUserModelId\TextRefinery.App` | El aviso aparece en el Centro de notificaciones **a nombre de `TextRefinery.App`**; sin la identidad, no |
+| **Barra de tareas** | La ventana de ajustes lleva el logo como icono propio de Windows | `WM_GETICON` sobre la ventana real: antes «ninguno», ahora «propio» |
+| **Administrador de tareas / Inicio** | Solo lo resuelve el paquete (`Text Refinery.exe`) | `FileDescription` del proceso: `OpenJDK Platform binary` frente a `Text Refinery` |
 
-Para desarrollo (ejecutar desde código) no hay forma de evitarlo: es el nombre del ejecutable de Java.
+Dos hallazgos que conviene recordar: JavaFX **ignora en silencio** los iconos de ventana que son un `snapshot` dibujado por código (hay
+que usar imágenes cargadas desde PNG), y el lanzador de `jpackage` arranca un proceso hijo que aloja la JVM.
+
+La clave del registro la crea la app en cada arranque (sin administrador) y se puede borrar sin consecuencias.
+`java -jar` sigue apareciendo como «OpenJDK Platform binary» en el Administrador de tareas: es el nombre del ejecutable de Java; para
+verlo como «Text Refinery» ejecuta el paquete (`scripts\package.ps1 -Type app-image`, o el instalador). Para abrir la ventana de
+ajustes al arrancar: `Text Refinery.exe --settings`.
 
 ## Privacidad
 
