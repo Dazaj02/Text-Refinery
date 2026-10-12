@@ -33,7 +33,10 @@ public class OllamaAiProvider implements AiProviderPort {
             String body = mapper.writeValueAsString(Map.of(
                     "model", s.aiModel,
                     "prompt", PromptTemplates.render(mode, s.textLanguage, text),
-                    "stream", false));
+                    "stream", false,
+                    // Temperatura baja: son tareas de fidelidad (corregir, resumir, citar), no de creatividad.
+                    // num_ctx: el predeterminado de Ollama (4096) recorta en silencio los textos largos.
+                    "options", Map.of("temperature", 0.2, "num_ctx", 8192)));
             HttpRequest request = HttpRequest.newBuilder(URI.create(base(s) + "/api/generate"))
                     .timeout(Duration.ofSeconds(s.aiTimeoutSeconds))
                     .header("Content-Type", "application/json")

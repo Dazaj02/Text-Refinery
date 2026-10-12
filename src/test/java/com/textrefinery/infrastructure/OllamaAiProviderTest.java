@@ -79,6 +79,8 @@ class OllamaAiProviderTest {
         JsonNode sent = requests.get(0);
         assertThat(sent.get("model").asText()).isEqualTo("modelo-de-prueba");
         assertThat(sent.get("stream").asBoolean()).isFalse();
+        assertThat(sent.get("options").get("temperature").asDouble()).isLessThanOrEqualTo(0.3);
+        assertThat(sent.get("options").get("num_ctx").asInt()).isGreaterThanOrEqualTo(8192);
         assertThat(sent.get("prompt").asText()).contains("hola mundo");
     }
 

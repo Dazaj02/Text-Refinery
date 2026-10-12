@@ -46,6 +46,30 @@ reiniciar, y al guardar la ventana vuelve a la página principal. Por defecto si
 
 Detalles del diseño y de la paleta en [docs/ui-design.md](docs/ui-design.md).
 
+## IA local (Ollama): cómo probarla y qué esperar
+
+1. Instala [Ollama](https://ollama.com) (`winget install Ollama.Ollama` en Windows) y descarga el modelo: `ollama pull llama3.2` (~2 GB).
+2. En *Ajustes → Atajos e IA* pulsa **Probar conexión**: debe decir «Conectado».
+3. Copia un texto y pulsa **Ctrl+Shift+G**: se limpia y se refina según el modo elegido (resumir, corregir gramática o párrafo citable).
+
+Para ver cómo responde el modelo sin usar la app (3 modos, tiempo y comprobación automática de que no aparecen cifras que no estén
+en el original): `mvn test-compile exec:java -Dexec.classpathScope=test -Dexec.mainClass=com.textrefinery.infrastructure.OllamaLiveCheck -Dexec.args="es"`
+(o `en`; opcionalmente un modelo y un archivo de texto).
+
+Resultados medidos con `llama3.2` (3B) en un equipo sin GPU, sobre un párrafo de 92 palabras:
+
+| Modo | Resultado | Tiempo |
+|---|---|---|
+| Corregir gramática | Corrige todos los errores sin cambiar el sentido | 4–8 s |
+| Párrafo citable | Formal y en tercera persona; conserva autores, años y cifras | 18–25 s |
+| Resumir | 92 → ~43 palabras; conserva autores y cifras, pero pierde detalle (a veces la conclusión) | 13–21 s |
+
+Notas: los tiempos dependen del equipo (con GPU bajan mucho) y el primero incluye cargar el modelo. Un modelo de 3B resume de forma
+correcta pero genérica, sobre todo en inglés; para mejores resúmenes usa un modelo mayor (cámbialo en *Ajustes → Atajos e IA → Modelo*).
+Dos decisiones que salieron de esta prueba: el resumen pide una **longitud concreta** (~45 % del original; sin ella el modelo devolvía
+casi el mismo texto) y las peticiones usan **temperatura baja** (0,2) y contexto de 8192 tokens (el predeterminado de Ollama recorta
+en silencio los textos largos). Si Ollama no responde, la app deja solo la limpieza y avisa.
+
 ## Requisitos
 
 - JDK 17 o superior
