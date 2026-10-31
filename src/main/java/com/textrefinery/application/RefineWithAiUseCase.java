@@ -2,6 +2,7 @@ package com.textrefinery.application;
 
 import com.textrefinery.domain.model.AiMode;
 import com.textrefinery.domain.model.Settings;
+import com.textrefinery.domain.port.AiModelMissingException;
 import com.textrefinery.domain.port.AiProviderPort;
 import com.textrefinery.domain.port.ClipboardPort;
 import com.textrefinery.domain.port.MessagesPort;
@@ -64,7 +65,10 @@ public class RefineWithAiUseCase {
                         ok = clipboard.writeText(text);
                         if (ok) {
                             cleaner.markWritten(text);
-                            notifier.error(messages.get("notify.aiUnavailable"));
+                            notifier.error(error instanceof java.util.concurrent.CompletionException
+                                    && error.getCause() instanceof AiModelMissingException missing
+                                    ? messages.get("notify.aiModelMissing", missing.model())
+                                    : messages.get("notify.aiUnavailable"));
                         }
                     }
                     if (!ok) {

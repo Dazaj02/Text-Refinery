@@ -3,6 +3,8 @@ package com.textrefinery.ui.settings;
 import com.textrefinery.domain.model.AiMode;
 import com.textrefinery.domain.model.Settings;
 import com.textrefinery.domain.port.MessagesPort;
+import com.textrefinery.infrastructure.ai.OllamaAiProvider;
+import com.textrefinery.infrastructure.ai.OllamaLauncher;
 import com.textrefinery.infrastructure.hotkey.Hotkey;
 import com.textrefinery.ui.components.Icons;
 import com.textrefinery.ui.components.ToggleSwitch;
@@ -65,6 +67,8 @@ final class ShortcutsPage implements SettingsPage {
     private final Label connection = new Label();
     private final Circle connectionDot = new Circle(3.5);
     private final HBox connectionChip = new HBox(6);
+    /** Acción contextual junto al estado: «Descargar Ollama» o «Descargar modelo»; oculta cuando todo está listo. */
+    private final Button aiAction = new Button();
     private final ScrollPane root = new ScrollPane();
     private boolean checkedOnce;
 
@@ -498,7 +502,9 @@ final class ShortcutsPage implements SettingsPage {
         test.setOnAction(e -> testConnection(true));
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox header = new HBox(10, title, connectionChip, spacer, test);
+        aiAction.getStyleClass().add("button-secondary");
+        hideAction();
+        HBox header = new HBox(10, title, connectionChip, spacer, aiAction, test);
         header.getStyleClass().add("card-header");
 
         Label modeLabel = new Label(messages.get("ai.modeLabel"));
@@ -593,6 +599,9 @@ final class ShortcutsPage implements SettingsPage {
         Settings probe = new Settings();
         probe.autoStartOllama = startIfNeeded && autoStart.isSelected();
         probe.ollamaUrl = url.getText().isBlank() ? "http://localhost:11434" : url.getText().strip();
+        if (!model.getText().isBlank()) {
+            probe.aiModel = model.getText().strip();
+        }
         Thread t = new Thread(() -> {
             boolean ok;
             try {
@@ -600,10 +609,76 @@ final class ShortcutsPage implements SettingsPage {
             } catch (RuntimeException e) {
                 ok = false;
             }
-            boolean result = ok;
-            Platform.runLater(() -> setConnection(
-                    messages.get(result ? "ai.status.connected" : "ai.status.disconnected"), result));
+            boolean connected = ok;
+            boolean hasModel = connected && new OllamaAiProvider(() -> probe).hasModel(probe);
+            boolean notInstalled = !connected && OllamaLauncher.isLocal(probe.ollamaUrl) && !new OllamaLauncher().isInstalled();
+            Platform.runLater(() -> {
+                if (connected && hasModel) {
+                    hideAction();
+                    setConnection(messages.get("ai.status.connected"), true);
+                } else if (connected) {
+                    setConnection(messages.get("ai.status.noModel"), false);
+                    showAction(messages.get("ai.action.pull"), () -> pullModel(probe));
+                } else if (notInstalled) {
+                    setConnection(messages.get("ai.status.notInstalled"), false);
+                    showAction(messages.get("ai.action.install"), ShortcutsPage::openDownloadPage);
+                } else {
+                    hideAction();
+                    setConnection(messages.get("ai.status.disconnected"), false);
+                }
+            });
         }, "ollama-check");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private void showAction(String label, Runnable action) {
+        aiAction.setText(label);
+        aiAction.setDisable(false);
+        aiAction.setOnAction(e -> action.run());
+        aiAction.setManaged(true);
+        aiAction.setVisible(true);
+    }
+
+    private void hideAction() {
+        aiAction.setManaged(false);
+        aiAction.setVisible(false);
+    }
+
+    /** Descarga el modelo en segundo plano mostrando el avance en el propio estado; al terminar vuelve a comprobar. */
+    private void pullModel(Settings probe) {
+        aiAction.setDisable(true);
+        setConnection(messages.get("ai.pull.starting"), null);
+        Thread t = new Thread(() -> {
+            int[] last = {-2};
+            try {
+                new OllamaAiProvider(() -> probe).pullModel(probe, pct -> {
+                    if (pct != last[0]) {
+                        last[0] = pct;
+                        Platform.runLater(() -> setConnection(pct < 0 ? messages.get("ai.pull.starting")
+                                : messages.get("ai.pull.progress", pct), null));
+                    }
+                });
+                Platform.runLater(() -> testConnection(false));
+            } catch (RuntimeException e) {
+                Platform.runLater(() -> {
+                    setConnection(messages.get("ai.pull.failed"), false);
+                    aiAction.setDisable(false);
+                });
+            }
+        }, "ollama-pull");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private static void openDownloadPage() {
+        Thread t = new Thread(() -> {
+            try {
+                java.awt.Desktop.getDesktop().browse(java.net.URI.create("https://ollama.com/download"));
+            } catch (java.io.IOException | RuntimeException e) {
+                // sin navegador disponible: el usuario puede abrir ollama.com a mano
+            }
+        }, "abrir-ollama-web");
         t.setDaemon(true);
         t.start();
     }

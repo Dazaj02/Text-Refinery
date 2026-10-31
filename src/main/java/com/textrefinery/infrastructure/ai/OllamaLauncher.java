@@ -66,6 +66,11 @@ public class OllamaLauncher {
                 .stream().filter(Files::isRegularFile).findFirst();
     }
 
+    /** ¿Está Ollama instalado en este equipo (ejecutable encontrado)? */
+    public boolean isInstalled() {
+        return locate().isPresent();
+    }
+
     /** Lanza el servidor si hay ejecutable. Devuelve {@code false} si Ollama no está instalado o no pudo arrancar. */
     public synchronized boolean start() {
         if (started != null && started.isAlive()) {

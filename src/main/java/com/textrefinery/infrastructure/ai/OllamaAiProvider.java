@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.textrefinery.domain.model.AiMode;
 import com.textrefinery.domain.model.Settings;
+import com.textrefinery.domain.port.AiModelMissingException;
 import com.textrefinery.domain.port.AiProviderException;
 import com.textrefinery.domain.port.AiProviderPort;
 import java.io.IOException;
@@ -13,6 +14,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Map;
+import java.util.function.IntConsumer;
 import java.util.function.Supplier;
 
 /** Adaptador para un servidor Ollama local (/api/generate, sin streaming). */
@@ -56,6 +58,9 @@ public class OllamaAiProvider implements AiProviderPort {
                     .POST(HttpRequest.BodyPublishers.ofString(body))
                     .build();
             HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 404) { // Ollama responde 404 cuando el modelo no está descargado
+                throw new AiModelMissingException(s.aiModel);
+            }
             if (response.statusCode() != 200) {
                 throw new AiProviderException("Ollama respondió HTTP " + response.statusCode());
             }
@@ -110,6 +115,82 @@ public class OllamaAiProvider implements AiProviderPort {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return false;
+        }
+    }
+
+    /** ¿Tiene Ollama descargado el modelo de los ajustes? {@code false} también si no se puede consultar. */
+    public boolean hasModel(Settings s) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder(URI.create(base(s) + "/api/tags"))
+                    .timeout(Duration.ofSeconds(3)).GET().build();
+            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                return false;
+            }
+            for (JsonNode m : mapper.readTree(response.body()).path("models")) {
+                if (sameModel(m.path("name").asText(""), s.aiModel)) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (IOException e) {
+            return false;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+    }
+
+    /** «llama3.2» equivale a «llama3.2:latest»; si el usuario escribe la etiqueta (p. ej. «:3b») debe coincidir. */
+    static boolean sameModel(String installed, String wanted) {
+        String w = wanted.strip();
+        return installed.equalsIgnoreCase(w) || (!w.contains(":") && installed.equalsIgnoreCase(w + ":latest"));
+    }
+
+    /**
+     * Descarga el modelo de los ajustes (/api/pull). Bloquea hasta terminar; {@code progress} recibe el porcentaje (0-100)
+     * cuando Ollama lo informa, o -1 en las fases sin porcentaje.
+     */
+    public void pullModel(Settings s, IntConsumer progress) {
+        try {
+            String body = mapper.writeValueAsString(Map.of("model", s.aiModel, "stream", true));
+            HttpRequest request = HttpRequest.newBuilder(URI.create(base(s) + "/api/pull"))
+                    .timeout(Duration.ofMinutes(60))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(body))
+                    .build();
+            HttpResponse<java.util.stream.Stream<String>> response =
+                    http.send(request, HttpResponse.BodyHandlers.ofLines());
+            if (response.statusCode() != 200) {
+                response.body().close();
+                throw new AiProviderException("Ollama respondió HTTP " + response.statusCode());
+            }
+            boolean[] success = {false};
+            try (java.util.stream.Stream<String> lines = response.body()) {
+                lines.forEach(line -> {
+                    try {
+                        JsonNode n = mapper.readTree(line);
+                        if (n.has("error")) {
+                            throw new AiProviderException("No se pudo descargar el modelo");
+                        }
+                        long total = n.path("total").asLong(0);
+                        progress.accept(total > 0 ? (int) (n.path("completed").asLong(0) * 100 / total) : -1);
+                        if ("success".equals(n.path("status").asText())) {
+                            success[0] = true;
+                        }
+                    } catch (IOException e) {
+                        // línea ilegible: se ignora, lo que cuenta es el "success" final
+                    }
+                });
+            }
+            if (!success[0]) {
+                throw new AiProviderException("La descarga del modelo no terminó");
+            }
+        } catch (IOException e) {
+            throw new AiProviderException("No se pudo contactar con Ollama", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new AiProviderException("Descarga interrumpida", e);
         }
     }
 

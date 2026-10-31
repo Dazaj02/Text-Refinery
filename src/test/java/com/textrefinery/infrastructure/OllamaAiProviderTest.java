@@ -40,6 +40,8 @@ class OllamaAiProviderTest {
     private volatile int status = 200;
     private volatile String reply = "{\"response\":\"  Texto refinado.  \"}";
     private volatile long delayMs = 0;
+    private volatile String tagsBody = "";
+    private volatile String pullBody = "";
 
     @BeforeEach
     void start() throws IOException {
@@ -58,7 +60,18 @@ class OllamaAiProviderTest {
             ex.close();
         });
         server.createContext("/api/tags", ex -> {
-            ex.sendResponseHeaders(200, -1);
+            byte[] body = tagsBody.getBytes(StandardCharsets.UTF_8);
+            ex.sendResponseHeaders(200, body.length == 0 ? -1 : body.length);
+            if (body.length > 0) {
+                ex.getResponseBody().write(body);
+            }
+            ex.close();
+        });
+        server.createContext("/api/pull", ex -> {
+            ex.getRequestBody().readAllBytes();
+            byte[] body = pullBody.getBytes(StandardCharsets.UTF_8);
+            ex.sendResponseHeaders(200, body.length);
+            ex.getResponseBody().write(body);
             ex.close();
         });
         server.start();
@@ -282,5 +295,91 @@ class OllamaAiProviderTest {
         assertThat(com.textrefinery.infrastructure.ai.OllamaLauncher.isLocal("http://[::1]:11434")).isTrue();
         assertThat(com.textrefinery.infrastructure.ai.OllamaLauncher.isLocal("http://otro-equipo:11434")).isFalse();
         assertThat(com.textrefinery.infrastructure.ai.OllamaLauncher.isLocal("no es una url")).isFalse();
+    }
+
+    // ------------------------------------------------ modelo ausente y descarga
+
+    @Test
+    void detectaSiElModeloEstaDescargado() {
+        tagsBody = "{\"models\":[{\"name\":\"llama3.2:latest\"},{\"name\":\"phi3:mini\"}]}";
+        OllamaAiProvider provider = new OllamaAiProvider(() -> settings);
+
+        settings.aiModel = "llama3.2";
+        assertThat(provider.hasModel(settings)).isTrue();
+        settings.aiModel = "phi3:mini";
+        assertThat(provider.hasModel(settings)).isTrue();
+        settings.aiModel = "phi3";
+        assertThat(provider.hasModel(settings)).isFalse();
+        settings.aiModel = "mistral";
+        assertThat(provider.hasModel(settings)).isFalse();
+    }
+
+    @Test
+    void sinModelosDescargadosHasModelEsFalso() {
+        tagsBody = "{\"models\":[]}";
+        assertThat(new OllamaAiProvider(() -> settings).hasModel(settings)).isFalse();
+    }
+
+    @Test
+    void unModeloAusenteSeDistingueDeUnaCaida() {
+        status = 404;
+        reply = "{\"error\":\"model 'x' not found\"}";
+        assertThatThrownBy(() -> new OllamaAiProvider(() -> settings).refine("hola", AiMode.GRAMMAR))
+                .isInstanceOf(com.textrefinery.domain.port.AiModelMissingException.class)
+                .hasMessageContaining("modelo-de-prueba");
+    }
+
+    @Test
+    void conUnModeloAusenteElAvisoDiceCualFalta() {
+        status = 404;
+        String[] clipboard = {"texto   a limpiar"};
+        ClipboardPort fake = new ClipboardPort() {
+            public Optional<String> readText() { return Optional.of(clipboard[0]); }
+            public Optional<String> readHtml() { return Optional.empty(); }
+            public boolean writeText(String t) { clipboard[0] = t; return true; }
+        };
+        List<String> errors = new ArrayList<>();
+        NotifierPort notifier = new NotifierPort() {
+            public void info(String m) { }
+            public void error(String m) { errors.add(m); }
+        };
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            CleanClipboardUseCase clean = new CleanClipboardUseCase(fake, new PipelineFactory(), notifier, () -> settings, messages);
+            new RefineWithAiUseCase(clean, new OllamaAiProvider(() -> settings), fake, notifier, () -> settings, pool, messages)
+                    .execute(AiMode.GRAMMAR).join();
+        } finally {
+            pool.shutdownNow();
+        }
+        assertThat(errors).hasSize(1);
+        assertThat(errors.get(0)).contains("modelo-de-prueba").contains("falta");
+        assertThat(clipboard[0]).isEqualTo("texto a limpiar");
+    }
+
+    @Test
+    void ladescargaInformaElPorcentajeYTerminaEnExito() {
+        pullBody = "{\"status\":\"pulling manifest\"}\n"
+                + "{\"status\":\"downloading\",\"total\":200,\"completed\":50}\n"
+                + "{\"status\":\"downloading\",\"total\":200,\"completed\":200}\n"
+                + "{\"status\":\"success\"}\n";
+        List<Integer> seen = new ArrayList<>();
+
+        new OllamaAiProvider(() -> settings).pullModel(settings, seen::add);
+
+        assertThat(seen).containsExactly(-1, 25, 100, -1);
+    }
+
+    @Test
+    void siLaDescargaTerminaConErrorSeLanzaUnaExcepcion() {
+        pullBody = "{\"error\":\"pull model manifest: file does not exist\"}\n";
+        assertThatThrownBy(() -> new OllamaAiProvider(() -> settings).pullModel(settings, pct -> { }))
+                .isInstanceOf(AiProviderException.class);
+    }
+
+    @Test
+    void siLaDescargaSeCortaSinSuccessEsUnError() {
+        pullBody = "{\"status\":\"downloading\",\"total\":200,\"completed\":50}\n";
+        assertThatThrownBy(() -> new OllamaAiProvider(() -> settings).pullModel(settings, pct -> { }))
+                .isInstanceOf(AiProviderException.class);
     }
 }

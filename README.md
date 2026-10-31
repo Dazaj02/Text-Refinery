@@ -54,6 +54,9 @@ Detalles del diseño y de la paleta en [docs/ui-design.md](docs/ui-design.md).
    usar la IA o al pulsar *Probar conexión* (la primera vez tarda unos segundos más) y lo cierra al salir. Solo cierra el que arrancó
    ella: si ya lo tenías abierto, no lo toca. Solo aplica a una dirección local (`localhost`); si Ollama no está instalado, la app sigue
    limpiando y avisa de que la IA no está disponible. Abrir la ventana de ajustes nunca lo arranca.
+   Si algo falta, el estado de esa tarjeta lo dice y ofrece el arreglo: **Ollama no instalado** → botón *Descargar Ollama* (abre la
+   página oficial); **Falta el modelo** → botón *Descargar modelo*, que lo baja mostrando el porcentaje y vuelve a comprobar solo.
+   Si usas la IA sin el modelo descargado, el aviso dice cuál falta y se aplica solo la limpieza.
 3. Copia un texto y pulsa **Ctrl+Shift+G**: se limpia y se refina según el modo elegido (resumir, corregir gramática o párrafo citable).
 
 Para ver cómo responde el modelo sin usar la app (3 modos, tiempo y comprobación automática de que no aparecen cifras que no estén
@@ -73,6 +76,13 @@ correcta pero genérica, sobre todo en inglés; para mejores resúmenes usa un m
 Dos decisiones que salieron de esta prueba: el resumen pide una **longitud concreta** (~45 % del original; sin ella el modelo devolvía
 casi el mismo texto) y las peticiones usan **temperatura baja** (0,2) y contexto de 8192 tokens (el predeterminado de Ollama recorta
 en silencio los textos largos). Si Ollama no responde, la app deja solo la limpieza y avisa.
+
+## Ejecutar la app (recomendado en Windows)
+
+`scriptsun.ps1` abre la app desde el paquete nativo (lo genera la primera vez). Así el Administrador de tareas, el Inicio y los
+avisos la muestran como **Text Refinery**; con `java -jar` Windows la llama «OpenJDK Platform binary» (es el nombre del ejecutable de
+Java). Opciones: `-Settings` abre la ventana de ajustes al arrancar y `-Rebuild` regenera el paquete (haz antes `mvn package` si
+cambiaste el código).
 
 ## Requisitos
 
