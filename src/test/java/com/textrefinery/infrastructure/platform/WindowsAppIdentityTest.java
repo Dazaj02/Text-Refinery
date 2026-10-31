@@ -15,14 +15,16 @@ class WindowsAppIdentityTest {
 
     @Test
     void elArchivoRegRegistraNombreIconoYColor() {
-        byte[] reg = WindowsAppIdentity.regFile("Text Refinery", Path.of("C:\\Users\\Ana\\AppData\\Roaming\\TextRefinery\\app-icon.png"));
+        Path icon = Path.of("TextRefinery", "app-icon.png").toAbsolutePath();
+        byte[] reg = WindowsAppIdentity.regFile("Text Refinery", icon);
         assertThat(reg[0] & 0xFF).as("BOM UTF-16 LE").isEqualTo(0xFF);
         assertThat(reg[1] & 0xFF).isEqualTo(0xFE);
         String text = text(reg);
         assertThat(text).startsWith("Windows Registry Editor Version 5.00");
         assertThat(text).contains("[HKEY_CURRENT_USER\\Software\\Classes\\AppUserModelId\\TextRefinery.App]");
         assertThat(text).contains("\"DisplayName\"=\"Text Refinery\"");
-        assertThat(text).contains("\"IconUri\"=\"C:\\\\Users\\\\Ana\\\\AppData\\\\Roaming\\\\TextRefinery\\\\app-icon.png\"");
+        // las barras invertidas se duplican en un .reg (en Windows son las del separador de la ruta)
+        assertThat(text).contains("\"IconUri\"=\"" + icon.toString().replace("\\", "\\\\") + "\"");
         assertThat(text).contains("\"IconBackgroundColor\"=\"FFC8102E\"");
     }
 

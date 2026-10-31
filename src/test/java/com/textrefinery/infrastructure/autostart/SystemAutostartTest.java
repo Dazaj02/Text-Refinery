@@ -76,13 +76,25 @@ class SystemAutostartTest {
 
         autostart.setEnabled(true);
         assertThat(autostart.isEnabled()).isTrue();
-        Path file = home.resolve(".config").resolve("autostart").resolve("text-refinery.desktop");
+        // Con XDG_CONFIG_HOME definido (p. ej. en los ejecutores de CI) la entrada va allí, no a ~/.config.
+        Path file = SystemAutostart.desktopPath(home, System.getenv("XDG_CONFIG_HOME"));
         assertThat(Files.readString(file)).contains("Exec=");
 
         autostart.setEnabled(false);
         assertThat(autostart.isEnabled()).isFalse();
         assertThat(file).doesNotExist();
         autostart.setEnabled(false); // desactivar dos veces no falla
+    }
+
+    @Test
+    void laRutaDeLaEntradaDesktopRespetaXdgConfigHome() {
+        Path home = Path.of("home", "ana");
+        assertThat(SystemAutostart.desktopPath(home, null))
+                .isEqualTo(home.resolve(".config").resolve("autostart").resolve("text-refinery.desktop"));
+        assertThat(SystemAutostart.desktopPath(home, " "))
+                .isEqualTo(home.resolve(".config").resolve("autostart").resolve("text-refinery.desktop"));
+        assertThat(SystemAutostart.desktopPath(home, "/otra/config"))
+                .isEqualTo(Path.of("/otra/config").resolve("autostart").resolve("text-refinery.desktop"));
     }
 
     @Test

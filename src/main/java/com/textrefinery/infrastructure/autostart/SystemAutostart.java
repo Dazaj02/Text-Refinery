@@ -107,8 +107,12 @@ public final class SystemAutostart implements AutostartPort {
     }
 
     private Path desktopPath() {
-        String xdg = System.getenv("XDG_CONFIG_HOME");
-        Path base = (xdg != null && !xdg.isBlank()) ? Path.of(xdg) : home.resolve(".config");
+        return desktopPath(home, System.getenv("XDG_CONFIG_HOME"));
+    }
+
+    /** Según la especificación XDG: {@code $XDG_CONFIG_HOME/autostart}, o {@code ~/.config/autostart} si no está definida. */
+    static Path desktopPath(Path home, String xdgConfigHome) {
+        Path base = (xdgConfigHome != null && !xdgConfigHome.isBlank()) ? Path.of(xdgConfigHome) : home.resolve(".config");
         return base.resolve("autostart").resolve("text-refinery.desktop");
     }
 
