@@ -79,7 +79,8 @@ en silencio los textos largos). Si Ollama no responde, la app deja solo la limpi
 
 ## Ejecutar la app (recomendado en Windows)
 
-`scriptsun.ps1` abre la app desde el paquete nativo (lo genera la primera vez). Así el Administrador de tareas, el Inicio y los
+`scripts
+un.ps1` abre la app desde el paquete nativo (lo genera la primera vez). Así el Administrador de tareas, el Inicio y los
 avisos la muestran como **Text Refinery**; con `java -jar` Windows la llama «OpenJDK Platform binary» (es el nombre del ejecutable de
 Java). Opciones: `-Settings` abre la ventana de ajustes al arrancar y `-Rebuild` regenera el paquete (haz antes `mvn package` si
 cambiaste el código).
@@ -111,7 +112,9 @@ Cada sistema empaqueta con su propio JDK; no hay compilación cruzada.
 
 El paquete incluye su propio runtime de Java: quien lo instala no necesita tener Java. Con `-SkipBuild`
 (o `SKIP_BUILD=1`) se reutiliza `target/` sin llamar a Maven. El resultado queda en `dist/`.
-Verificado en Windows con `app-image`; los instaladores `.exe`/`.msi`, `.dmg` y `.deb` aún no se han probado.
+Verificado a mano en Windows con `app-image`. La CI (`.github/workflows/ci.yml`) construye y prueba en Windows, macOS y Linux, arranca
+la app en los tres (`scripts/ci-smoke.sh`) y genera los instaladores `.exe`, `.dmg` y `.deb` como artefactos descargables de cada
+ejecución. La CI no puede pulsar atajos ni ver la bandeja: eso sigue pendiente de una prueba manual en macOS y Linux.
 
 Los iconos (`src/main/resources/icons/app.ico`, `.icns`, `.png`) se generan desde el logo con
 `java -cp "target/classes;target/libs/*" scripts/GenerateIcons.java` (en macOS/Linux, `:` en lugar de `;`).
