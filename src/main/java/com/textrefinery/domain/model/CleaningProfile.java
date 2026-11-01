@@ -1,24 +1,9 @@
 package com.textrefinery.domain.model;
 
-/** Perfil de limpieza: determina qué procesadores se encadenan y su orden. */
+/** Perfil de limpieza: determina qué procesadores se encadenan y su orden. El nombre visible está en i18n/messages_*. */
 public enum CleaningProfile {
-    WORD("Word"),
-    LATEX("LaTeX"),
-    MARKDOWN("Markdown"),
-    PLAIN("Texto plano");
-
-    private final String label;
-
-    CleaningProfile(String label) {
-        this.label = label;
-    }
-
-    public String label() {
-        return label;
-    }
-
-    @Override
-    public String toString() {
-        return label;
-    }
+    WORD,
+    LATEX,
+    MARKDOWN,
+    PLAIN
 }

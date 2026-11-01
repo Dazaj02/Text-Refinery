@@ -10,9 +10,33 @@ ui / infrastructure ──► application ──► domain
 |------|---------|-----------|
 | Dominio | `domain.model`, `domain.processor`, `domain.port` | Perfiles, ajustes, procesadores de texto, interfaces (puertos). Sin dependencias de SO, UI ni red (salvo Jsoup/flexmark en los procesadores HTML). |
 | Aplicación | `application` | `CleanClipboardUseCase`, `RefineWithAiUseCase`, `PipelineFactory`. |
-| Infraestructura | `infrastructure.*` | Adaptadores: portapapeles AWT, JNativeHook, Ollama, JSON, bloqueo de instancia, notificaciones. |
-| UI | `ui.*` | Bandeja (AWT `SystemTray`) y ventana de ajustes (JavaFX, bajo demanda). |
+| Infraestructura | `infrastructure.*` | Adaptadores: `clipboard` (AWT), `hotkey` (JNativeHook), `ai` (Ollama y `OllamaLauncher`, que lo arranca si hace falta y lo cierra al salir solo si lo arrancó la app), `config` (JSON y rutas por SO), `lock` (instancia única), `notify`, `autostart` (registro / LaunchAgent / .desktop), `logging` (app.log), `platform` (SO y limitaciones). |
+| UI | `ui.*` | `tray` (AWT `SystemTray`), `settings` (ventana JavaFX por páginas), `components` (ToggleSwitch, Icons, BrandLogo, Fonts). |
 | Composición | `App` | Único lugar donde se instancian y conectan los adaptadores. |
+
+`infrastructure.platform.WindowsAppIdentity` da a la app una identidad propia en Windows (AppUserModelID + nombre e icono en el
+registro): sin ella los avisos de la bandeja y la barra de tareas se atribuyen a `javaw.exe`. Usa JNA solo en Windows.
+
+Puertos del dominio: `ClipboardPort`, `AiProviderPort`, `NotifierPort`, `SettingsPort`, `AutostartPort` y `MessagesPort`
+(textos de la interfaz en el idioma activo; implementado por `infrastructure.i18n.ResourceBundleMessages`, que cambia en caliente).
+Los casos de uso piden sus avisos a `MessagesPort`, de modo que cambiar el idioma no requiere reconstruirlos.
+
+## Estado en memoria (privacidad)
+
+`CleanClipboardUseCase` guarda el último texto original para «Restaurar texto original». Vive solo en memoria,
+nunca en disco ni en el registro, y se pierde al cerrar la app. Si el portapapeles ya contiene lo último que se escribió
+(atajo pulsado dos veces, o refinado con IA) no se sobrescribe el original verdadero.
+
+## Degradación ante fallos
+
+| Fallo | Comportamiento |
+|---|---|
+| Atajo global no disponible (permiso, Wayland, combinación ocupada) | Se avisa con una pista según el SO; la app y el menú de bandeja siguen funcionando |
+| Sin bandeja del sistema | Se abre la ventana de ajustes; al cerrarla termina la app |
+| Ollama caído | Si el ajuste «Iniciar Ollama automáticamente» está activo y la dirección es local, la app lo arranca y espera hasta 25 s; si no se puede, se aplica solo la limpieza y se avisa |
+| Ollama lento o con error | Se aplica solo la limpieza y se avisa |
+| Portapapeles bloqueado | Reintenta ~1 s; si no, avisa en vez de decir «Texto limpio» |
+| No se puede escribir `app.log` | La app sigue; solo hay consola |
 
 ## Flujo
 

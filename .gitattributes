@@ -1,0 +1,12 @@
+# Normaliza los saltos de línea para que el proyecto se comporte igual en Windows, macOS y Linux.
+* text=auto
+
+# Los scripts de shell deben llevar LF siempre: con CRLF bash falla (/bin/bash^M).
+*.sh text eol=lf
+*.ps1 text eol=crlf
+mvnw text eol=lf
+
+# Binarios
+*.png binary
+*.ico binary
+*.icns binary

@@ -2,7 +2,8 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'feature/**']
+    tags: ['v*']
   pull_request:
 
 jobs:
@@ -17,7 +18,104 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: '17'
           cache: maven
       - name: Build y pruebas
         run: mvn -B verify
+
+  # Arranque real de la app en cada sistema (JVM + JavaFX + bandeja + atajo global). No pulsa teclas ni ve la bandeja:
+  # comprueba que arranca, que sigue viva y que app.log no tiene excepciones. Informativo: no bloquea el resto.
+  smoke:
+    needs: build
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Compilar
+        run: mvn -B -DskipTests package
+      - name: Arrancar la app (Linux, con pantalla virtual)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          xvfb-run -a bash scripts/ci-smoke.sh
+      - name: Arrancar la app
+        if: runner.os != 'Linux'
+        shell: bash
+        run: bash scripts/ci-smoke.sh
+
+  # Genera los instaladores nativos (.exe, .dmg, .deb) y los deja como artefactos descargables del workflow.
+  package:
+    needs: build
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Instalar fakeroot (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y fakeroot
+      - name: Preparar WiX (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Get-Command candle.exe -ErrorAction SilentlyContinue)) {
+            if ($env:WIX -and (Test-Path "$env:WIX\bin")) { "$env:WIX\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH }
+            else { choco install wixtoolset -y --no-progress; "C:\Program Files (x86)\WiX Toolset v3.14\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH }
+          }
+      - name: Empaquetar (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: scripts\package.ps1
+      - name: Empaquetar (macOS y Linux)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: bash scripts/package.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: instalador-${{ runner.os }}
+          path: |
+            dist/*.exe
+            dist/*.msi
+            dist/*.dmg
+            dist/*.deb
+          if-no-files-found: error
+
+  # Al subir una etiqueta "vX.Y.Z" publica una Release de GitHub con los tres instaladores adjuntos.
+  #   git tag v1.0.0 && git push origin v1.0.0
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: instalador-*
+          path: instaladores
+          merge-multiple: true
+      - name: Publicar la Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: instaladores/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true

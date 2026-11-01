@@ -1,0 +1,295 @@
+/* Text Refinery — tema rojo. Paleta y componentes; ver docs/ui-design.md. */
+
+.root {
+    /* Escala tonal del rojo primario */
+    -red-50: #FFF1F2;
+    -red-100: #FFE0E3;
+    -red-200: #FFC2C9;
+    -red-300: #FF94A0;
+    -red-400: #F95A6C;
+    -red-500: #E8283F;
+    -red-600: #C8102E;
+    -red-700: #A00D25;
+    -red-800: #7A0A1C;
+    -red-900: #4F0612;
+    /* Neutros vino */
+    -wine-900: #2A1215;
+    -wine-700: #3A1B1F;
+    -wine-600: #5A2A30;
+    -ink: #261C1E;
+    -ink-2: #4A3A3D;
+    -muted: #7A6A6D;
+    -border: #EBDFE0;
+    -border-soft: #F3E9EA;
+    -input-border: #E0D0D2;
+    -bg: #FAF7F7;
+    -surface: #FFFFFF;
+    -tint: #F6EFEF;
+    -track-off: #D9CBCD;
+    -success: #1F8A5B;
+    -success-ink: #1F6B49;
+    -success-bg: #DDF4E8;
+    /* Semánticos: el mismo rojo no sirve como texto sobre claro y sobre oscuro, por eso el tema oscuro los redefine */
+    -accent-text: -red-600;
+    -accent-soft-text: -red-700;
+    -accent-deep-text: -red-800;
+    -danger-text: -red-700;
+    -result-bg: #FFFAFA;
+    -muted-2: #B7A5A8;
+
+    -fx-font-family: "Segoe UI", "SF Pro Text", "Helvetica Neue", "Ubuntu", "System";
+    -fx-font-size: 14px;
+    -fx-background-color: -bg;
+    -fx-text-fill: -ink;
+    -fx-accent: -red-600;
+    -fx-focus-color: -red-400;
+    -fx-faint-focus-color: transparent;
+}
+
+/* ---------- Tema oscuro: se activa con la clase "dark" en el nodo raíz ---------- */
+.root.dark {
+    -red-50: #3A1519;
+    -red-100: #4A1A20;
+    -red-200: #6B2229;
+    -red-300: #8E2C37;
+    -ink: #F6E9EA;
+    -ink-2: #E3CDD0;
+    -muted: #B9A0A4;
+    -muted-2: #7D6569;
+    -border: #3F2B2F;
+    -border-soft: #332226;
+    -input-border: #4E3338;
+    -bg: #190E10;
+    -surface: #251618;
+    -tint: #301F22;
+    -track-off: #4E3A3D;
+    -result-bg: #2B191C;
+    -success: #3DDC97;
+    -success-ink: #6FE3B0;
+    -success-bg: #17382A;
+    -accent-text: #FF6B7D;
+    -accent-soft-text: #FFB3BC;
+    -accent-deep-text: #FFC2C9;
+    -danger-text: #FF8A97;
+    /* Los controles de Modena (barras de desplazamiento, etc.) derivan sus tonos de -fx-base */
+    -fx-base: #251618;
+    -fx-control-inner-background: #251618;
+    -fx-background: #190E10;
+}
+
+.label { -fx-text-fill: -ink; }
+
+/* ---------- Barra lateral ---------- */
+.sidebar {
+    -fx-background-color: -wine-900;
+    -fx-padding: 28 18 20 18;
+    -fx-spacing: 4;
+}
+.brand-mark { -fx-effect: dropshadow(gaussian, rgba(200,16,46,0.45), 16, 0, 0, 6); }
+.brand-name { -fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold; }
+.brand-sub { -fx-text-fill: #C9A9AD; -fx-font-size: 12px; }
+
+.nav-button {
+    -fx-background-color: transparent;
+    -fx-background-radius: 10;
+    -fx-padding: 11 12 11 12;
+    -fx-text-fill: #E3CDD0;
+    -fx-font-size: 14px;
+    -fx-graphic-text-gap: 12;
+    -fx-alignment: CENTER_LEFT;
+    -fx-cursor: hand;
+}
+.nav-button:hover { -fx-background-color: rgba(255,255,255,0.07); }
+.nav-button:selected {
+    -fx-background-color: -red-600;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+.nav-button .icon { -fx-stroke: #E3CDD0; }
+.nav-button:selected .icon { -fx-stroke: white; }
+
+.sidebar-card {
+    -fx-background-color: -wine-700;
+    -fx-border-color: -wine-600;
+    -fx-border-radius: 12; -fx-background-radius: 12;
+    -fx-padding: 14;
+    -fx-spacing: 8;
+}
+.sidebar-card-title { -fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: bold; }
+.sidebar-card-text { -fx-text-fill: #C9A9AD; -fx-font-size: 12px; }
+.status-dot { -fx-fill: #3DDC97; }
+
+/* ---------- Tipografía ---------- */
+.page-title { -fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: -ink; }
+.page-subtitle { -fx-font-size: 14px; -fx-text-fill: -muted; }
+.section-label { -fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: -muted; }
+.hint { -fx-font-size: 12px; -fx-text-fill: -muted; }
+/* La familia monoespaciada la fija Fonts.mono() según lo instalado. */
+.mono { -fx-font-size: 13px; }
+
+/* ---------- Tarjetas ---------- */
+.card {
+    -fx-background-color: -surface;
+    -fx-border-color: -border;
+    -fx-border-radius: 14; -fx-background-radius: 14;
+}
+.card-header {
+    -fx-padding: 14 18 14 18;
+    -fx-border-color: transparent transparent -border-soft transparent;
+    -fx-spacing: 8;
+    -fx-alignment: CENTER_LEFT;
+}
+.card-title { -fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: -ink; }
+.pane-left { -fx-border-color: transparent -border-soft transparent transparent; }
+.pane-result { -fx-background-color: -result-bg; -fx-background-radius: 0 0 14 0; }
+.pane-label { -fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: -muted; }
+.pane-label-red { -fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: -accent-text; }
+
+/* ---------- Chips ---------- */
+.chip { -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 4 10 4 10; -fx-background-radius: 999; }
+.chip-red { -fx-background-color: -red-100; -fx-text-fill: -accent-soft-text; }
+.chip-muted { -fx-background-color: -tint; -fx-text-fill: -muted; }
+.chip-green { -fx-background-color: -success-bg; -fx-text-fill: -success-ink; }
+.chip-pill {
+    -fx-background-color: -surface; -fx-border-color: -border;
+    -fx-background-radius: 999; -fx-border-radius: 999;
+    -fx-padding: 7 14 7 12; -fx-spacing: 10; -fx-alignment: CENTER_LEFT;
+}
+.chip-pill-text { -fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: -success-ink; }
+.dot-green { -fx-fill: -success; }
+.dot-red { -fx-fill: -red-600; }
+
+/* ---------- Tarjetas de perfil ---------- */
+.profile-card {
+    -fx-background-color: -surface;
+    -fx-border-color: -border;
+    -fx-border-radius: 12; -fx-background-radius: 12;
+    -fx-padding: 14;
+    -fx-alignment: TOP_LEFT;
+    -fx-cursor: hand;
+}
+.profile-card:hover { -fx-border-color: -red-200; }
+.profile-card:selected {
+    -fx-background-color: -red-50;
+    -fx-border-color: -red-600;
+    -fx-border-width: 2;
+    -fx-padding: 13;
+    -fx-effect: dropshadow(gaussian, rgba(200,16,46,0.16), 16, 0, 0, 6);
+}
+.profile-badge {
+    -fx-background-color: -tint; -fx-background-radius: 9;
+    -fx-min-width: 34; -fx-min-height: 34; -fx-pref-width: 34; -fx-pref-height: 34; -fx-max-width: 34; -fx-max-height: 34;
+}
+.profile-badge-text { -fx-font-size: 14px; -fx-font-weight: 800; -fx-text-fill: -muted; }
+.profile-card:selected .profile-badge { -fx-background-color: -red-600; }
+.profile-card:selected .profile-badge-text { -fx-text-fill: white; }
+.profile-name { -fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: -ink; }
+.profile-desc { -fx-font-size: 12px; -fx-text-fill: -muted; }
+
+/* ---------- Interruptor ---------- */
+.toggle-switch { -fx-background-color: -track-off; -fx-background-radius: 11; -fx-cursor: hand; }
+.toggle-switch:on { -fx-background-color: -red-600; }
+.toggle-switch:focused { -fx-border-color: -red-300; -fx-border-width: 2; -fx-border-radius: 11; }
+.toggle-knob { -fx-fill: white; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 3, 0, 0, 1); }
+.processor-title { -fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: -ink; }
+.processor-hint { -fx-font-size: 11px; -fx-text-fill: -muted; }
+
+/* ---------- Segmentado ---------- */
+.segment-group { -fx-background-color: -tint; -fx-background-radius: 11; -fx-padding: 4; -fx-spacing: 4; }
+.segment {
+    -fx-background-color: transparent; -fx-background-radius: 8;
+    -fx-text-fill: -muted; -fx-font-weight: bold; -fx-font-size: 13px;
+    -fx-padding: 10 12 10 12; -fx-cursor: hand;
+}
+.segment:hover { -fx-text-fill: -ink; }
+.segment:selected {
+    -fx-background-color: -red-600; -fx-text-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(200,16,46,0.30), 8, 0, 0, 3);
+}
+
+/* ---------- Teclas ---------- */
+.keycap {
+    -fx-background-color: -surface;
+    -fx-border-color: -track-off -track-off -track-off -track-off;
+    -fx-border-width: 1 1 3 1;
+    -fx-border-radius: 8; -fx-background-radius: 8;
+    -fx-padding: 6 12 5 12;
+    -fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: -ink;
+}
+.keycap-accent {
+    -fx-background-color: -red-600; -fx-border-color: -red-700; -fx-text-fill: white;
+    -fx-padding: 6 14 5 14;
+}
+.keycap-plus { -fx-text-fill: -muted-2; -fx-font-weight: bold; }
+.keycap-capturing { -fx-text-fill: -accent-text; -fx-font-weight: bold; }
+
+/* ---------- Botones ---------- */
+.button-primary {
+    -fx-background-color: -red-600; -fx-text-fill: white;
+    -fx-font-size: 14px; -fx-font-weight: bold;
+    -fx-padding: 11 24 11 24; -fx-background-radius: 10; -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(200,16,46,0.32), 14, 0, 0, 6);
+}
+.button-primary:hover { -fx-background-color: -red-700; }
+.button-primary:pressed { -fx-background-color: -red-800; }
+.button-secondary {
+    -fx-background-color: -surface; -fx-text-fill: -ink-2;
+    -fx-border-color: -input-border; -fx-border-radius: 10; -fx-background-radius: 10;
+    -fx-font-size: 14px; -fx-font-weight: 600;
+    -fx-padding: 10 20 10 20; -fx-cursor: hand;
+}
+.button-secondary:hover { -fx-background-color: -tint; }
+.button-outline {
+    -fx-background-color: -surface; -fx-text-fill: -accent-text;
+    -fx-border-color: -input-border; -fx-border-radius: 9; -fx-background-radius: 9;
+    -fx-font-size: 13px; -fx-font-weight: bold;
+    -fx-padding: 8 14 8 14; -fx-cursor: hand;
+}
+.button-outline:hover { -fx-background-color: -red-50; -fx-border-color: -red-200; }
+
+.button-ghost {
+    -fx-background-color: transparent; -fx-text-fill: -muted;
+    -fx-font-size: 13px; -fx-font-weight: 600;
+    -fx-padding: 8 10 8 10; -fx-background-radius: 9; -fx-cursor: hand;
+}
+.button-ghost:hover { -fx-text-fill: -accent-text; -fx-background-color: -red-50; }
+.button-ghost:disabled { -fx-opacity: 0.4; -fx-cursor: default; }
+
+/* ---------- Campos ---------- */
+.text-field {
+    -fx-background-color: -surface;
+    -fx-border-color: -input-border; -fx-border-radius: 9; -fx-background-radius: 9;
+    -fx-padding: 10 12 10 12; -fx-font-size: 14px; -fx-text-fill: -ink;
+    -fx-prompt-text-fill: -muted-2; -fx-highlight-fill: -red-200; -fx-highlight-text-fill: -ink;
+}
+.text-field:focused { -fx-border-color: -red-600; -fx-border-width: 1.5; }
+.field-label { -fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: -ink-2; }
+
+.text-area {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0; -fx-padding: 0;
+    -fx-highlight-fill: -red-200; -fx-highlight-text-fill: -ink;
+}
+.text-area .content { -fx-background-color: transparent; -fx-padding: 4 0 4 0; }
+.text-area .text { -fx-fill: -ink; }
+.text-area:focused { -fx-background-color: transparent; }
+.text-area .scroll-pane { -fx-background-color: transparent; }
+.text-area .viewport { -fx-background-color: transparent; }
+.text-area .scroll-pane > .viewport { -fx-background-color: transparent; }
+.text-area .scroll-bar { -fx-opacity: 0.6; }
+
+.scroll-pane { -fx-background-color: transparent; -fx-padding: 0; }
+.scroll-pane > .viewport { -fx-background-color: transparent; }
+.scroll-pane > .corner { -fx-background-color: transparent; }
+
+/* ---------- Avisos ---------- */
+.note-box {
+    -fx-background-color: -red-50; -fx-border-color: -red-200;
+    -fx-border-radius: 11; -fx-background-radius: 11;
+    -fx-padding: 12 14 12 14; -fx-spacing: 12; -fx-alignment: CENTER_LEFT;
+}
+.note-text { -fx-text-fill: -accent-deep-text; -fx-font-size: 13px; }
+.note-icon { -fx-stroke: -red-600; }
+
+.footer-ok { -fx-text-fill: -success-ink; -fx-font-size: 13px; -fx-font-weight: bold; }
+.footer-error { -fx-text-fill: -danger-text; -fx-font-size: 13px; -fx-font-weight: bold; }

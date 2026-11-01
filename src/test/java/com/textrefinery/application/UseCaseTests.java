@@ -3,6 +3,8 @@ package com.textrefinery.application;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.textrefinery.domain.model.AiMode;
+import com.textrefinery.domain.model.Language;
+import com.textrefinery.infrastructure.i18n.ResourceBundleMessages;
 import com.textrefinery.domain.model.Settings;
 import com.textrefinery.domain.port.AiProviderException;
 import com.textrefinery.domain.port.AiProviderPort;
@@ -20,6 +22,7 @@ class UseCaseTests {
     static class FakeClipboard implements ClipboardPort {
         String text;
         String html;
+        boolean locked;
 
         @Override
         public Optional<String> readText() {
@@ -32,8 +35,12 @@ class UseCaseTests {
         }
 
         @Override
-        public void writeText(String t) {
+        public boolean writeText(String t) {
+            if (locked) {
+                return false;
+            }
             text = t;
+            return true;
         }
     }
 
@@ -55,12 +62,13 @@ class UseCaseTests {
     private final FakeClipboard clipboard = new FakeClipboard();
     private final FakeNotifier notifier = new FakeNotifier();
     private final Settings settings = new Settings();
+    private final ResourceBundleMessages messages = new ResourceBundleMessages(Language.ES);
     private final Executor direct = Runnable::run;
     private CleanClipboardUseCase clean;
 
     @BeforeEach
     void setUp() {
-        clean = new CleanClipboardUseCase(clipboard, new PipelineFactory(), notifier, () -> settings);
+        clean = new CleanClipboardUseCase(clipboard, new PipelineFactory(), notifier, () -> settings, messages);
     }
 
     @Test
@@ -69,6 +77,85 @@ class UseCaseTests {
         clean.execute();
         assertThat(clipboard.text).isEqualTo("información útil");
         assertThat(notifier.infos).containsExactly("Texto limpio ✓");
+    }
+
+    @Test
+    void noDiceExitoSiNoPudoEscribir() {
+        clipboard.text = "hola  mundo";
+        clipboard.locked = true;
+        clean.execute();
+        assertThat(notifier.infos).isEmpty();
+        assertThat(notifier.errors).hasSize(1);
+    }
+
+    @Test
+    void restaurarDevuelveElTextoAnteriorALaLimpieza() {
+        clipboard.text = "infor-\nmacion   sucia";
+        clean.execute();
+        assertThat(clipboard.text).isEqualTo("informacion sucia");
+
+        clean.restoreOriginal();
+        assertThat(clipboard.text).isEqualTo("infor-\nmacion   sucia");
+        assertThat(notifier.infos).contains("Texto original restaurado ✓");
+    }
+
+    @Test
+    void limpiarDosVecesSeguidasNoPierdeElOriginalVerdadero() {
+        clipboard.text = "uno   dos\ntres";
+        clean.execute();
+        clean.execute(); // el portapapeles ya tiene el texto limpio
+        clean.restoreOriginal();
+        assertThat(clipboard.text).isEqualTo("uno   dos\ntres");
+    }
+
+    @Test
+    void restaurarSinNadaGuardadoAvisa() {
+        clean.restoreOriginal();
+        assertThat(notifier.errors).containsExactly("No hay ningún texto anterior que restaurar");
+    }
+
+    @Test
+    void conLaIaTambienSeRestauraElOriginalNoElRefinado() {
+        clipboard.text = "hola   mundo";
+        AiProviderPort ai = new AiProviderPort() {
+            public String refine(String text, AiMode mode) { return "REFINADO"; }
+            public boolean isAvailable() { return true; }
+        };
+        RefineWithAiUseCase refine = new RefineWithAiUseCase(clean, ai, clipboard, notifier, () -> settings, direct, messages);
+        refine.execute(AiMode.GRAMMAR).join();
+        assertThat(clipboard.text).isEqualTo("REFINADO");
+
+        refine.execute(AiMode.GRAMMAR).join(); // segunda pasada sobre el texto ya refinado
+        clean.restoreOriginal();
+        assertThat(clipboard.text).isEqualTo("hola   mundo");
+    }
+
+    @Test
+    void enMarkdownSeRestauraElTextoPlanoNoElHtml() {
+        settings.defaultProfile = com.textrefinery.domain.model.CleaningProfile.MARKDOWN;
+        clipboard.html = "<p>Hola <b>mundo</b></p>";
+        clipboard.text = "Hola mundo";
+        clean.execute();
+        assertThat(clipboard.text).contains("**mundo**");
+
+        clean.restoreOriginal();
+        assertThat(clipboard.text).isEqualTo("Hola mundo");
+    }
+
+    @Test
+    void losAvisosSalenEnElIdiomaActivoYCambianEnCaliente() {
+        clipboard.text = "hola   mundo";
+        clean.execute();
+        assertThat(notifier.infos).containsExactly("Texto limpio ✓");
+
+        messages.setLanguage(Language.EN); // sin reiniciar ni reconstruir el caso de uso
+        clipboard.text = "hello   world";
+        clean.execute();
+        assertThat(notifier.infos).containsExactly("Texto limpio ✓", "Text cleaned ✓");
+
+        clipboard.text = null;
+        clean.execute();
+        assertThat(notifier.errors).containsExactly("The clipboard contains no text");
     }
 
     @Test
@@ -100,7 +187,7 @@ class UseCaseTests {
                 return true;
             }
         };
-        new RefineWithAiUseCase(clean, ai, clipboard, notifier, () -> settings, direct)
+        new RefineWithAiUseCase(clean, ai, clipboard, notifier, () -> settings, direct, messages)
                 .execute(AiMode.GRAMMAR).join();
         assertThat(clipboard.text).isEqualTo("[hola mundo]");
     }
@@ -119,7 +206,7 @@ class UseCaseTests {
                 return false;
             }
         };
-        new RefineWithAiUseCase(clean, ai, clipboard, notifier, () -> settings, direct)
+        new RefineWithAiUseCase(clean, ai, clipboard, notifier, () -> settings, direct, messages)
                 .execute(AiMode.GRAMMAR).join();
         assertThat(clipboard.text).isEqualTo("hola mundo");
         assertThat(notifier.errors).hasSize(1);
