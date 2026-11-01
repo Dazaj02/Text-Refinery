@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main, 'feature/**']
+    tags: ['v*']
   pull_request:
 
 jobs:
@@ -97,3 +98,24 @@ jobs:
             dist/*.dmg
             dist/*.deb
           if-no-files-found: error
+
+  # Al subir una etiqueta "vX.Y.Z" publica una Release de GitHub con los tres instaladores adjuntos.
+  #   git tag v1.0.0 && git push origin v1.0.0
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: instalador-*
+          path: instaladores
+          merge-multiple: true
+      - name: Publicar la Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: instaladores/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true

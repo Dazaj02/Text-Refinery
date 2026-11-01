@@ -116,6 +116,9 @@ Verificado a mano en Windows con `app-image`. La CI (`.github/workflows/ci.yml`)
 la app en los tres (`scripts/ci-smoke.sh`) y genera los instaladores `.exe`, `.dmg` y `.deb` como artefactos descargables de cada
 ejecución. La CI no puede pulsar atajos ni ver la bandeja: eso sigue pendiente de una prueba manual en macOS y Linux.
 
+**Publicar una versión:** al subir una etiqueta (`git tag v1.0.0 && git push origin v1.0.0`) la CI genera los tres instaladores y los
+adjunta a una Release pública de GitHub, de donde se descargan sin iniciar sesión.
+
 Los iconos (`src/main/resources/icons/app.ico`, `.icns`, `.png`) se generan desde el logo con
 `java -cp "target/classes;target/libs/*" scripts/GenerateIcons.java` (en macOS/Linux, `:` en lugar de `;`).
 
