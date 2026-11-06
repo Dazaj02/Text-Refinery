@@ -6,7 +6,7 @@
 
     <groupId>com.textrefinery</groupId>
     <artifactId>text-refinery</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     <packaging>jar</packaging>
     <name>Text Refinery Desktop</name>
     <description>Limpia y refina texto del portapapeles con un atajo global (multiplataforma).</description>

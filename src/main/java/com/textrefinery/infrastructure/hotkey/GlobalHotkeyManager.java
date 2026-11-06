@@ -20,6 +20,7 @@ import java.util.logging.Logger;
 public class GlobalHotkeyManager implements NativeKeyListener {
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(GlobalHotkeyManager.class);
+    private static final String LIB_PATH_PROPERTY = "jnativehook.lib.path";
     private static final long DEBOUNCE_MS = 400;
     private static final Field RESERVED = findReservedField();
 
@@ -40,6 +41,23 @@ public class GlobalHotkeyManager implements NativeKeyListener {
 
     public boolean isSuspended() {
         return suspended;
+    }
+
+    /**
+     * Carpeta donde JNativeHook extrae su biblioteca nativa. Por defecto la deja junto al .jar, y en una instalación
+     * (p. ej. «C:\Program Files») esa carpeta no es escribible: la carga falla con «Acceso denegado» y no hay atajos.
+     * Debe llamarse antes de {@link #start()}; si el usuario ya fijó la propiedad, se respeta.
+     */
+    public static void useNativeLibraryDir(java.nio.file.Path dir) {
+        if (System.getProperty(LIB_PATH_PROPERTY) != null) {
+            return;
+        }
+        try {
+            java.nio.file.Files.createDirectories(dir);
+            System.setProperty(LIB_PATH_PROPERTY, dir.toAbsolutePath().toString());
+        } catch (java.io.IOException | RuntimeException e) {
+            log.warn("No se pudo preparar la carpeta de la biblioteca nativa {}: {}", dir, e.getMessage());
+        }
     }
 
     public GlobalHotkeyManager(Runnable onClean, Runnable onAi) {
