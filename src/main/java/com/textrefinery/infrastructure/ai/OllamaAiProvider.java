@@ -22,6 +22,13 @@ public class OllamaAiProvider implements AiProviderPort {
 
     /** Margen para que un Ollama recién lanzado empiece a atender. */
     private static final int START_WAIT_SECONDS = 25;
+    /**
+     * Cargar un modelo en memoria puede tardar más de un minuto en equipos con poca RAM. Esa espera va aparte del límite de la
+     * respuesta: si la petición se cancela a mitad de la carga, Ollama la aborta y el siguiente intento vuelve a empezar.
+     */
+    private static final int MODEL_LOAD_SECONDS = 180;
+    /** Cuánto mantiene Ollama el modelo en memoria tras usarlo (por defecto lo descarga a los 5 minutos). */
+    private static final String KEEP_ALIVE = "30m";
 
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
     private final ObjectMapper mapper = new ObjectMapper();
@@ -44,11 +51,13 @@ public class OllamaAiProvider implements AiProviderPort {
         if (launcher != null) {
             ensureAvailable(s);
         }
+        loadModel(s);
         try {
             String body = mapper.writeValueAsString(Map.of(
                     "model", s.aiModel,
                     "prompt", PromptTemplates.render(mode, s.textLanguage, text),
                     "stream", false,
+                    "keep_alive", KEEP_ALIVE,
                     // Temperatura baja: son tareas de fidelidad (corregir, resumir, citar), no de creatividad.
                     // num_ctx: el predeterminado de Ollama (4096) recorta en silencio los textos largos.
                     "options", Map.of("temperature", 0.2, "num_ctx", 8192)));
@@ -77,6 +86,35 @@ public class OllamaAiProvider implements AiProviderPort {
     @Override
     public boolean isAvailable() {
         return isAvailable(settings.get());
+    }
+
+    @Override
+    public int extraWaitSeconds() {
+        return MODEL_LOAD_SECONDS;
+    }
+
+    /**
+     * Pide a Ollama que cargue el modelo y lo mantenga en memoria. Con el modelo ya cargado responde al instante; si no,
+     * tarda lo que tarde la carga, con su propio límite (la generación posterior conserva el suyo).
+     */
+    private void loadModel(Settings s) {
+        try {
+            String body = mapper.writeValueAsString(Map.of("model", s.aiModel, "keep_alive", KEEP_ALIVE));
+            HttpRequest request = HttpRequest.newBuilder(URI.create(base(s) + "/api/generate"))
+                    .timeout(Duration.ofSeconds(MODEL_LOAD_SECONDS))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(body))
+                    .build();
+            HttpResponse<Void> response = http.send(request, HttpResponse.BodyHandlers.discarding());
+            if (response.statusCode() == 404) {
+                throw new AiModelMissingException(s.aiModel);
+            }
+        } catch (IOException e) {
+            throw new AiProviderException("No se pudo cargar el modelo en Ollama", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new AiProviderException("Carga del modelo interrumpida", e);
+        }
     }
 
     /**

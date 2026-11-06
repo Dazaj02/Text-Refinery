@@ -47,9 +47,11 @@ class OllamaAiProviderTest {
     void start() throws IOException {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/api/generate", ex -> {
-            requests.add(mapper.readTree(ex.getRequestBody()));
+            JsonNode req = mapper.readTree(ex.getRequestBody());
+            requests.add(req);
             try {
-                Thread.sleep(delayMs);
+                // el retardo simula una respuesta lenta, no la carga del modelo (la petición de carga no lleva prompt)
+                Thread.sleep(req.has("prompt") ? delayMs : 0);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
@@ -89,12 +91,31 @@ class OllamaAiProviderTest {
         String result = new OllamaAiProvider(() -> settings).refine("hola mundo", AiMode.GRAMMAR);
 
         assertThat(result.strip()).isEqualTo("Texto refinado.");
-        JsonNode sent = requests.get(0);
+        JsonNode sent = generations().get(0);
         assertThat(sent.get("model").asText()).isEqualTo("modelo-de-prueba");
         assertThat(sent.get("stream").asBoolean()).isFalse();
         assertThat(sent.get("options").get("temperature").asDouble()).isLessThanOrEqualTo(0.3);
         assertThat(sent.get("options").get("num_ctx").asInt()).isGreaterThanOrEqualTo(8192);
         assertThat(sent.get("prompt").asText()).contains("hola mundo");
+    }
+
+    /** Peticiones de generación (con prompt); las de carga del modelo no lo llevan. */
+    private List<JsonNode> generations() {
+        return requests.stream().filter(r -> r.has("prompt")).toList();
+    }
+
+    @Test
+    void antesDeGenerarPideCargarElModeloYMantenerloEnMemoria() {
+        OllamaAiProvider provider = new OllamaAiProvider(() -> settings);
+        provider.refine("hola mundo", AiMode.GRAMMAR);
+
+        assertThat(requests).hasSize(2);
+        JsonNode load = requests.get(0);
+        assertThat(load.has("prompt")).isFalse();
+        assertThat(load.get("model").asText()).isEqualTo("modelo-de-prueba");
+        assertThat(load.get("keep_alive").asText()).isEqualTo("30m");
+        assertThat(requests.get(1).get("keep_alive").asText()).isEqualTo("30m");
+        assertThat(provider.extraWaitSeconds()).isGreaterThanOrEqualTo(120);
     }
 
     @Test
@@ -107,11 +128,11 @@ class OllamaAiProviderTest {
     void elIdiomaElegidoLlegaAlPromptQueSeEnvia() {
         settings.textLanguage = com.textrefinery.domain.model.Language.EN;
         new OllamaAiProvider(() -> settings).refine("hello there", AiMode.GRAMMAR);
-        assertThat(requests.get(0).get("prompt").asText()).contains("English copy editor").doesNotContain("corrector");
+        assertThat(generations().get(0).get("prompt").asText()).contains("English copy editor").doesNotContain("corrector");
 
         settings.textLanguage = com.textrefinery.domain.model.Language.ES;
         new OllamaAiProvider(() -> settings).refine("hola", AiMode.GRAMMAR);
-        assertThat(requests.get(1).get("prompt").asText()).contains("corrector de estilo");
+        assertThat(generations().get(1).get("prompt").asText()).contains("corrector de estilo");
     }
 
     @Test
