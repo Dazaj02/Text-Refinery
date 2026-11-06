@@ -18,7 +18,7 @@ if (-not $SkipBuild) {
     if ($LASTEXITCODE -ne 0) { throw "Falló el build de Maven" }
 }
 
-# jpackage solo admite versiones numéricas (1.0.1, no 1.0.1-SNAPSHOT)
+# jpackage solo admite versiones numéricas (1.0.2, no 1.0.2-SNAPSHOT)
 $version = ([xml](Get-Content pom.xml)).project.version -replace "-SNAPSHOT", ""
 $jar = Get-ChildItem target\text-refinery-*.jar | Select-Object -First 1
 if (-not $jar) { throw "No existe el jar en target\. Ejecuta mvn package primero (o quita -SkipBuild)." }
