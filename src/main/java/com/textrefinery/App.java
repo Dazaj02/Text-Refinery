@@ -156,10 +156,11 @@ public final class App {
                 exit));
 
         try {
+            GlobalHotkeyManager.useNativeLibraryDir(AppPaths.configDir().resolve("native"));
             hotkeys.start();
         } catch (NativeHookException | UnsatisfiedLinkError | RuntimeException e) {
             // La app sigue viva: el menú de la bandeja y la ventana de ajustes funcionan sin atajo global.
-            log.error("No se pudo activar el atajo global: {}", e.getClass().getSimpleName());
+            log.error("No se pudo activar el atajo global: {} {}", e.getClass().getSimpleName(), e.getMessage());
             notifier.error(messages.get("notify.hotkeyFailed", messages.get(
                     PlatformInfo.hotkeyProblemKey(PlatformInfo.current(), PlatformInfo.isWayland()))));
         }
