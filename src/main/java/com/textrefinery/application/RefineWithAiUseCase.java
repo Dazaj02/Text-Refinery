@@ -49,7 +49,7 @@ public class RefineWithAiUseCase {
         notifier.info(messages.get("notify.aiProcessing"));
 
         return CompletableFuture.supplyAsync(() -> ai.refine(text, mode), executor)
-                .orTimeout(settings.get().aiTimeoutSeconds, TimeUnit.SECONDS)
+                .orTimeout(settings.get().aiTimeoutSeconds + (long) ai.extraWaitSeconds(), TimeUnit.SECONDS)
                 .handle((refined, error) -> {
                     boolean ok;
                     if (error == null && refined != null && !refined.isBlank()) {

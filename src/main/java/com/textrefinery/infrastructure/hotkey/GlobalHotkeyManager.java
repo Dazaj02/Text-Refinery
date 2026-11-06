@@ -88,7 +88,8 @@ public class GlobalHotkeyManager implements NativeKeyListener {
             if (GlobalScreen.isNativeHookRegistered()) {
                 GlobalScreen.unregisterNativeHook();
             }
-        } catch (NativeHookException e) {
+        } catch (NativeHookException | LinkageError e) {
+            // LinkageError: la biblioteca nativa no llegó a cargarse, así que no hay nada que liberar.
             log.warn("No se pudo liberar el hook nativo: {}", e.getMessage());
         }
     }
